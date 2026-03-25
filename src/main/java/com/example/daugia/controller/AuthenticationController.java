@@ -1,5 +1,6 @@
 package com.example.daugia.controller;
 
+import com.example.daugia.dto.ApiResponse;
 import com.example.daugia.dto.AuthenticationRequest;
 import com.example.daugia.dto.AuthenticationResponse;
 import com.example.daugia.dto.LogoutRequest;
@@ -19,33 +20,35 @@ public class AuthenticationController {
     private final AuthenticationService service;
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(
+    public ResponseEntity<ApiResponse<String>> register(
             @RequestBody @Valid RegisterRequest request) {
         service.register(request);
-        return ResponseEntity.ok("User registered successfully. Please check your email to verify.");
+        return ResponseEntity.ok(ApiResponse.success(
+                "User registered successfully. Please check your email to verify.",
+                null));
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponse> authenticate(
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> authenticate(
             @RequestBody @Valid AuthenticationRequest request) {
-        return ResponseEntity.ok(service.authenticate(request));
+        return ResponseEntity.ok(ApiResponse.success("Authenticated successfully", service.authenticate(request)));
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<AuthenticationResponse> refreshToken(
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> refreshToken(
             @RequestBody @Valid RefreshTokenRequest request) {
-        return ResponseEntity.ok(service.refreshToken(request));
+        return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", service.refreshToken(request)));
     }
 
     @GetMapping("/verify")
-    public ResponseEntity<String> verifyUser(@RequestParam("token") String token) {
+    public ResponseEntity<ApiResponse<String>> verifyUser(@RequestParam("token") String token) {
         service.verifyUser(token);
-        return ResponseEntity.ok("Account verified successfully");
+        return ResponseEntity.ok(ApiResponse.success("Account verified successfully", null));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@RequestBody @Valid LogoutRequest request) {
+    public ResponseEntity<ApiResponse<String>> logout(@RequestBody @Valid LogoutRequest request) {
         service.logout(request);
-        return ResponseEntity.ok("Logged out successfully");
+        return ResponseEntity.ok(ApiResponse.success("Logged out successfully", null));
     }
 }

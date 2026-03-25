@@ -1,5 +1,6 @@
 package com.example.daugia.controller;
 
+import com.example.daugia.dto.ApiResponse;
 import com.example.daugia.dto.UserDto;
 import com.example.daugia.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +22,13 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        return ResponseEntity.ok(userService.findAllUsers());
+    public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsers() {
+        return ResponseEntity.ok(ApiResponse.success("Fetched users successfully", userService.findAllUsers()));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.findUserById(id));
+    public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Fetched user successfully", userService.findUserById(id)));
     }
 }
