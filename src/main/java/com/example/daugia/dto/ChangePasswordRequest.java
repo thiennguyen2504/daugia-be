@@ -1,6 +1,7 @@
 package com.example.daugia.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,11 +11,15 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthenticationRequest {
+public class ChangePasswordRequest {
 
-    @NotBlank(message = "Email or phone is required")
-    private String identifier;
+    @NotBlank
+    private String currentPassword;
 
-    @NotBlank(message = "Password is required")
-    private String password;
+    @NotBlank
+    @Size(min = 8)
+    private String newPassword;
+
+    @NotBlank
+    private String confirmPassword;
 }

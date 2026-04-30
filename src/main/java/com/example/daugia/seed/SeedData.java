@@ -4,6 +4,7 @@ import com.example.daugia.entity.Role;
 import com.example.daugia.entity.User;
 import com.example.daugia.repository.RoleRepository;
 import com.example.daugia.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,6 +16,7 @@ import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class SeedData implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
@@ -24,43 +26,43 @@ public class SeedData implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-
-        // Ensure roles exist
         Role adminRole = roleRepository.findByName("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder().name("ADMIN").build()));
+
+        Role sellerRole = roleRepository.findByName("SELLER")
+            .orElseGet(() -> roleRepository.save(Role.builder().name("SELLER").build()));
+
+        Role bidderRole = roleRepository.findByName("BIDDER")
+            .orElseGet(() -> roleRepository.save(Role.builder().name("BIDDER").build()));
 
         Role userRole = roleRepository.findByName("USER")
                 .orElseGet(() -> roleRepository.save(Role.builder().name("USER").build()));
 
-        // Create Admin User
-        if (userRepository.findByEmail("admin@example.com").isEmpty()) {
-            Set<Role> adminRoles = new HashSet<>();
-            adminRoles.add(adminRole);
-            adminRoles.add(userRole);
+        seedAccount("admin@gmail.com", "0900000001", "Admin", "System", "Admin@123", adminRole);
+        seedAccount("seller@gmail.com", "0900000002", "Nguyen", "Van Seller", "Seller@123", sellerRole);
+        seedAccount("bidder@gmail.com", "0900000003", "Tran", "Thi Bidder", "Bidder@123", bidderRole);
 
-            userRepository.save(User.builder()
-                    .firstname("Admin")
-                    .lastname("User")
-                    .email("admin@example.com")
-                    .password(passwordEncoder.encode("password123"))
-                    .enabled(true)
-                    .roles(adminRoles)
-                    .build());
+        log.info("Seed data initialized with roles: ADMIN, SELLER, BIDDER, USER");
         }
 
-        // Create Normal User
-        if (userRepository.findByEmail("user@example.com").isEmpty()) {
-            Set<Role> userRoles = new HashSet<>();
-            userRoles.add(userRole);
-
-            userRepository.save(User.builder()
-                    .firstname("Normal")
-                    .lastname("User")
-                    .email("user@example.com")
-                    .password(passwordEncoder.encode("password123"))
-                    .enabled(true)
-                    .roles(userRoles)
-                    .build());
+        private void seedAccount(String email, String phone, String firstname, String lastname, String rawPassword, Role role) {
+        if (userRepository.existsByEmail(email)) {
+            return;
         }
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(role);
+
+        userRepository.save(User.builder()
+            .firstname(firstname)
+            .lastname(lastname)
+            .email(email)
+            .phone(phone)
+            .password(passwordEncoder.encode(rawPassword))
+            .enabled(true)
+            .roles(roles)
+            .build());
+
+        log.info("Seeded account {}", email);
     }
 }

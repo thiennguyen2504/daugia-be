@@ -2,5 +2,5 @@ package com.example.daugia.service;
 
 public interface EmailService {
     void sendEmail(String to, String subject, String content);
-    void sendVerificationEmail(String to, String name, String token);
+    void sendOtpEmail(String to, String name, String otp, String purpose);
 }

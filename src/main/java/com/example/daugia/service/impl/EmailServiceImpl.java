@@ -25,6 +25,26 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendEmail(String to, String subject, String content) {
+        sendHtmlEmail(to, subject, content);
+    }
+
+
+    @Async
+    @Override
+    public void sendOtpEmail(String to, String name, String otp, String purpose) {
+        String subject = "SmartAuction - Your OTP Code";
+        String content = "<div style='font-family:Arial,sans-serif;line-height:1.6'>"
+                + "<p>Hi " + name + ",</p>"
+                + "<p>Your OTP for " + purpose + " is:</p>"
+                + "<div style='font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px 20px;background:#f4f6f8;display:inline-block;border-radius:10px;'>"
+                + otp + "</div>"
+                + "<p style='margin-top:16px'>This code expires in 10 minutes.</p>"
+                + "<p>If you did not request this, you can ignore this email.</p>"
+                + "</div>";
+        sendHtmlEmail(to, subject, content);
+    }
+
+    private void sendHtmlEmail(String to, String subject, String content) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(
@@ -41,15 +61,5 @@ public class EmailServiceImpl implements EmailService {
         } catch (MessagingException e) {
             throw new EmailSendingException("Failed to send email", e);
         }
-    }
-
-    @Override
-    public void sendVerificationEmail(String to, String name, String token) {
-        String subject = "Email Verification";
-        String verificationUrl = "http://localhost:8080/api/v1/auth/verify?token=" + token;
-        String content = "<p>Hi " + name + ",</p>" +
-                "<p>Please click the link below to verify your registration:</p>" +
-                "<p><a href=\"" + verificationUrl + "\">Verify Email</a></p>";
-        sendEmail(to, subject, content);
     }
 }

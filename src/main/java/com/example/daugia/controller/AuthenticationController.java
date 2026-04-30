@@ -3,13 +3,20 @@ package com.example.daugia.controller;
 import com.example.daugia.dto.ApiResponse;
 import com.example.daugia.dto.AuthenticationRequest;
 import com.example.daugia.dto.AuthenticationResponse;
+import com.example.daugia.dto.ChangePasswordRequest;
+import com.example.daugia.dto.ForgotPasswordRequest;
 import com.example.daugia.dto.LogoutRequest;
 import com.example.daugia.dto.RefreshTokenRequest;
 import com.example.daugia.dto.RegisterRequest;
+import com.example.daugia.dto.ResetPasswordRequest;
+import com.example.daugia.dto.VerifyOtpRequest;
 import com.example.daugia.service.AuthenticationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,9 +30,13 @@ public class AuthenticationController {
     public ResponseEntity<ApiResponse<String>> register(
             @RequestBody @Valid RegisterRequest request) {
         service.register(request);
-        return ResponseEntity.ok(ApiResponse.success(
-                "User registered successfully. Please check your email to verify.",
-                null));
+        return ResponseEntity.ok(ApiResponse.success("OTP sent to email", null));
+        }
+
+        @PostMapping("/verify-otp")
+        public ResponseEntity<ApiResponse<AuthenticationResponse>> verifyRegistrationOtp(
+            @RequestBody @Valid VerifyOtpRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Registration verified successfully", service.verifyRegistrationOtp(request)));
     }
 
     @PostMapping("/authenticate")
@@ -40,11 +51,27 @@ public class AuthenticationController {
         return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", service.refreshToken(request)));
     }
 
-    @GetMapping("/verify")
-    public ResponseEntity<ApiResponse<String>> verifyUser(@RequestParam("token") String token) {
-        service.verifyUser(token);
-        return ResponseEntity.ok(ApiResponse.success("Account verified successfully", null));
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+        service.sendForgotPasswordOtp(request);
+        return ResponseEntity.ok(ApiResponse.success("OTP sent to email", null));
     }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        service.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Password reset successful", null));
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @RequestBody @Valid ChangePasswordRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        service.changePassword(request, jwt.getSubject());
+        return ResponseEntity.ok(ApiResponse.success("Password changed successfully", null));
+    }
+
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(@RequestBody @Valid LogoutRequest request) {
