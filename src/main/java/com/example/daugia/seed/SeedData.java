@@ -35,14 +35,13 @@ public class SeedData implements CommandLineRunner {
         Role bidderRole = roleRepository.findByName("BIDDER")
             .orElseGet(() -> roleRepository.save(Role.builder().name("BIDDER").build()));
 
-        Role userRole = roleRepository.findByName("USER")
-                .orElseGet(() -> roleRepository.save(Role.builder().name("USER").build()));
+
 
         seedAccount("admin@gmail.com", "0900000001", "Admin", "System", "Admin@123", adminRole);
         seedAccount("seller@gmail.com", "0900000002", "Nguyen", "Van Seller", "Seller@123", sellerRole);
         seedAccount("bidder@gmail.com", "0900000003", "Tran", "Thi Bidder", "Bidder@123", bidderRole);
 
-        log.info("Seed data initialized with roles: ADMIN, SELLER, BIDDER, USER");
+        log.info("Seed data initialized with roles: ADMIN, SELLER, BIDDER");
         }
 
         private void seedAccount(String email, String phone, String firstname, String lastname, String rawPassword, Role role) {

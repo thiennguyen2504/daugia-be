@@ -2,9 +2,7 @@ package com.example.daugia.config;
 
 import com.example.daugia.filter.JwtBlacklistFilter;
 import com.example.daugia.properties.JwtProperties;
-import com.example.daugia.security.CustomAuthenticationFailureHandler;
-import com.example.daugia.security.CustomOAuth2UserService;
-import com.example.daugia.security.OAuth2LoginSuccessHandler;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -33,9 +31,7 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfiguration {
 
-        private final CustomOAuth2UserService customOAuth2UserService;
-        private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
-        private final CustomAuthenticationFailureHandler customAuthenticationFailureHandler;
+
         private final JwtProperties jwtProperties;
         private final JwtBlacklistFilter jwtBlacklistFilter;
         private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
@@ -71,14 +67,6 @@ public class SecurityConfiguration {
                                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer -> jwtConfigurer
                                                 .decoder(customJwtDecoder())
                                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())))
-                                .oauth2Login(oauth2 -> oauth2
-                                                .userInfoEndpoint(userInfo -> userInfo
-                                                                .userService(customOAuth2UserService) // mapping oauth2
-                                                                                                      // info to user in
-                                                                                                      // db
-                                                )
-                                                .successHandler(oAuth2LoginSuccessHandler) // generate token or redirect
-                                                .failureHandler(customAuthenticationFailureHandler))
                                 .headers(headers -> headers.frameOptions(frame -> frame.disable())); // for h2
                 return http.build();
         }
