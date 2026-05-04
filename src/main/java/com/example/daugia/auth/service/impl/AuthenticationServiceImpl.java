@@ -75,7 +75,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .roles(Set.of(role))
+                .role(role)
                 .enabled(false)
                 .build();
 
@@ -139,6 +139,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 return AuthenticationResponse.builder()
                         .accessToken(accessToken)
                         .refreshToken(newRefreshToken)
+                        .role(user.getRole().getName())
                         .build();
             }
         }
@@ -206,6 +207,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return AuthenticationResponse.builder()
                 .accessToken(jwtService.generateToken(user))
                 .refreshToken(jwtService.generateRefreshToken(user))
+                .role(user.getRole().getName())
                 .build();
     }
 }

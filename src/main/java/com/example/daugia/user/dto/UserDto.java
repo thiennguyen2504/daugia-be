@@ -14,10 +14,10 @@ import java.util.Set;
 @NoArgsConstructor
 public class UserDto {
     private Long id;
-    private String firstname;
-    private String lastname;
+    private String fullName;
     private String email;
     private String phone;
-    private Set<Role> roles;
+    private String avatarUrl;
+    private com.example.daugia.user.entity.Role role;
     private boolean enabled;
 }

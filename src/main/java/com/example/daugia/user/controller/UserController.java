@@ -8,7 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -30,5 +32,16 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Fetched user successfully", userService.findUserById(id)));
+    }
+
+    @PutMapping(value = "/profile", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UserDto>> updateProfile(
+            @RequestParam(value = "fullName", required = false) String fullName,
+            @RequestParam(value = "phone",    required = false) String phone,
+            @RequestParam(value = "avatar",   required = false) org.springframework.web.multipart.MultipartFile avatar,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) throws java.io.IOException {
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully",
+                userService.updateProfile(jwt.getSubject(), fullName, phone, avatar)));
     }
 }

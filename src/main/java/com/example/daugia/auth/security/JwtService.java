@@ -43,7 +43,7 @@ public class JwtService {
                     .subject(user.getEmail())
                     .issueTime(new Date())
                     .expirationTime(new Date(System.currentTimeMillis() + expiration))
-                    .claim("roles", user.getRoles().stream().map(Role::getName).collect(Collectors.toList()));
+                    .claim("role", user.getRole().getName());
 
             SignedJWT signedJWT = new SignedJWT(
                     new JWSHeader(JWSAlgorithm.HS256),

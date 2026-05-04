@@ -6,5 +6,6 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
+    @org.mapstruct.Mapping(target = "fullName", expression = "java(user.getFirstname() + \" \" + user.getLastname())")
     UserDto toDto(User user);
 }
