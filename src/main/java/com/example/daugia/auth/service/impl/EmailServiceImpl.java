@@ -12,6 +12,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +41,40 @@ public class EmailServiceImpl implements EmailService {
                 + otp + "</div>"
                 + "<p style='margin-top:16px'>This code expires in 10 minutes.</p>"
                 + "<p>If you did not request this, you can ignore this email.</p>"
+                + "</div>";
+        sendHtmlEmail(to, subject, content);
+    }
+
+    @Async
+    @Override
+    public void sendAuctionApprovedEmail(String to, String sellerName, String productName, LocalDateTime startTime) {
+        String formattedTime = startTime != null
+                ? startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                : "N/A";
+        String subject = "SmartAuction - Your Auction Has Been Approved!";
+        String content = "<div style='font-family:Arial,sans-serif;line-height:1.6'>"
+                + "<h2 style='color:#27ae60'>🎉 Auction Approved</h2>"
+                + "<p>Hi " + sellerName + ",</p>"
+                + "<p>Great news! Your auction for <strong>" + productName + "</strong> has been <strong style='color:#27ae60'>approved</strong>.</p>"
+                + "<p>Bidding will begin at: <strong>" + formattedTime + "</strong></p>"
+                + "<p>Buyers will be able to find and bid on your item once bidding opens.</p>"
+                + "<p>Thank you for using SmartAuction!</p>"
+                + "</div>";
+        sendHtmlEmail(to, subject, content);
+    }
+
+    @Async
+    @Override
+    public void sendAuctionRejectedEmail(String to, String sellerName, String productName, String reason) {
+        String subject = "SmartAuction - Your Auction Was Not Approved";
+        String content = "<div style='font-family:Arial,sans-serif;line-height:1.6'>"
+                + "<h2 style='color:#e74c3c'>❌ Auction Rejected</h2>"
+                + "<p>Hi " + sellerName + ",</p>"
+                + "<p>Unfortunately, your auction for <strong>" + productName + "</strong> was <strong style='color:#e74c3c'>rejected</strong>.</p>"
+                + "<p><strong>Reason:</strong> " + reason + "</p>"
+                + "<p>Please create a new auction addressing the issue above. Rejected auctions cannot be resubmitted.</p>"
+                + "<p>If you believe this is an error, please contact our support team.</p>"
+                + "<p>Thank you for using SmartAuction.</p>"
                 + "</div>";
         sendHtmlEmail(to, subject, content);
     }
