@@ -41,6 +41,15 @@ spring:
           max-active: 10
           max-idle: 5
           min-idle: 1
+  task:
+    scheduling:
+      pool:
+        size: 2
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:demo}
+  api-key: ${CLOUDINARY_API_KEY:demo}
+  api-secret: ${CLOUDINARY_API_SECRET:demo}
 
 jwt:
   secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970

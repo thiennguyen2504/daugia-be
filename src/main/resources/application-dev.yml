@@ -20,9 +20,18 @@ spring:
           max-active: 10
           max-idle: 5
           min-idle: 1
+  task:
+    scheduling:
+      pool:
+        size: 2
 
 jwt:
   secret-key: ${JWT_SECRET}
 
 domain:
   url: ${DOMAIN_URL:http://localhost:3000}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:demo}
+  api-key: ${CLOUDINARY_API_KEY:demo}
+  api-secret: ${CLOUDINARY_API_SECRET:demo}
