@@ -13,8 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -56,9 +55,6 @@ public class SeedData implements CommandLineRunner {
             return;
         }
 
-        Set<Role> roles = new HashSet<>();
-        roles.add(role);
-
         userRepository.save(User.builder()
                 .firstname(firstname)
                 .lastname(lastname)
@@ -66,7 +62,7 @@ public class SeedData implements CommandLineRunner {
                 .phone(phone)
                 .password(passwordEncoder.encode(rawPassword))
                 .enabled(true)
-                .roles(roles)
+                .role(role)
                 .build());
 
         log.info("Seeded account {}", email);

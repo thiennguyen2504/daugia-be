@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.springframework.format.annotation.DateTimeFormat;  
 
 @Data
 @Builder
@@ -35,9 +36,11 @@ public class AuctionCreateRequest {
 
     @NotNull(message = "Bidding start time is required")
     @Future(message = "Bidding start time must be in the future")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime biddingStartTime;
 
     @NotNull(message = "Bidding end time is required")
     @Future(message = "Bidding end time must be in the future")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime biddingEndTime;
 }

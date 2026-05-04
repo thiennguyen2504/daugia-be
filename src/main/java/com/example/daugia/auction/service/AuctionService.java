@@ -5,11 +5,13 @@ import com.example.daugia.common.dto.PageResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
+
 
 public interface AuctionService {
 
     // Seller
-    AuctionResponse create(AuctionCreateRequest request, String sellerEmail);
+    AuctionResponse create(AuctionCreateRequest request, List<MultipartFile> images, String sellerEmail) throws IOException;
     PageResponse<AuctionSummaryResponse> getMyAuctions(String sellerEmail, int page, int size);
 
     // Public / Bidder
@@ -20,6 +22,4 @@ public interface AuctionService {
     PageResponse<AuctionSummaryResponse> searchAdmin(AuctionFilterRequest filter, int page, int size);
     AuctionResponse review(Long id, AuctionReviewRequest request, String adminEmail);
 
-    // Image upload (Seller)
-    AuctionImageResponse uploadImage(Long auctionId, MultipartFile file, String sellerEmail) throws IOException;
 }

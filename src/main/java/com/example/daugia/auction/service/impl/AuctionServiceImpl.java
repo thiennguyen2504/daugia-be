@@ -56,7 +56,7 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     @Transactional
-    public AuctionResponse create(AuctionCreateRequest request, String sellerEmail) {
+    public AuctionResponse create(AuctionCreateRequest request, List<MultipartFile> images, String sellerEmail) throws IOException {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found: " + sellerEmail));
 
@@ -85,6 +85,27 @@ public class AuctionServiceImpl implements AuctionService {
                 .build();
 
         Auction saved = auctionRepository.save(auction);
+
+        // Upload images if any
+        if (images != null && !images.isEmpty()) {
+            for (int i = 0; i < images.size(); i++) {
+                MultipartFile file = images.get(i);
+                if (file.isEmpty()) continue;
+
+                byte[] bytes = file.getBytes();
+                UploadResult result = storageService.upload(bytes, file.getOriginalFilename(),
+                        "auctions/" + saved.getId());
+
+                AuctionImage image = AuctionImage.builder()
+                        .auction(saved)
+                        .imageUrl(result.url())
+                        .publicId(result.publicId())
+                        .sortOrder(i)
+                        .build();
+                AuctionImage savedImage = auctionImageRepository.save(image);
+                saved.getImages().add(savedImage);
+            }
+        }
 
         eventPublisher.publish(new AuctionCreatedEvent(
                 saved.getId(), saved.getProductName(), seller.getEmail()));
@@ -203,38 +224,6 @@ public class AuctionServiceImpl implements AuctionService {
         return auctionMapper.toResponse(saved);
     }
 
-    // ─── IMAGE UPLOAD ─────────────────────────────────────────────────────────
-
-    @Override
-    @Transactional
-    public AuctionImageResponse uploadImage(Long auctionId, MultipartFile file, String sellerEmail) throws IOException {
-        Auction auction = auctionRepository.findById(auctionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
-
-        if (!auction.getSeller().getEmail().equals(sellerEmail)) {
-            throw new AppException("Not authorized to upload images for this auction", HttpStatus.FORBIDDEN);
-        }
-
-        if (auction.getStatus() != AuctionStatus.PENDING) {
-            throw new AppException("Images can only be uploaded when auction is pending", HttpStatus.BAD_REQUEST);
-        }
-
-        byte[] bytes = file.getBytes();
-        int sortOrder = auctionImageRepository.countByAuction_Id(auctionId);
-
-        UploadResult result = storageService.upload(bytes, file.getOriginalFilename(),
-                "auctions/" + auctionId);
-
-        AuctionImage image = AuctionImage.builder()
-                .auction(auction)
-                .imageUrl(result.url())
-                .publicId(result.publicId())
-                .sortOrder(sortOrder)
-                .build();
-
-        AuctionImage saved = auctionImageRepository.save(image);
-        return auctionMapper.toImageResponse(saved);
-    }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
 
