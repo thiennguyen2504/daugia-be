@@ -13,7 +13,7 @@ public interface AuctionMapper {
 
     @Mapping(target = "sellerId",     source = "seller.id")
     @Mapping(target = "sellerEmail",  source = "seller.email")
-    @Mapping(target = "sellerName",   expression = "java(auction.getSeller().getFirstname() + \" \" + auction.getSeller().getLastname())")
+    @Mapping(target = "sellerName",   source = "seller.fullName")
     @Mapping(target = "categoryId",   source = "category.id")
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "thumbnailUrl", expression = "java(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())")

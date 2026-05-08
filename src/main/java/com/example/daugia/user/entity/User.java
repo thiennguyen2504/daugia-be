@@ -59,4 +59,8 @@ public class User {
         return email;
     }
 
+    public String getFullName() {
+        return (firstname + " " + lastname).trim();
+    }
+
 }

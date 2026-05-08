@@ -52,6 +52,19 @@ public class Auction extends AuditableEntity {
     @Column(nullable = false)
     private LocalDateTime biddingEndTime;
 
+    @Column(precision = 19, scale = 2)
+    private BigDecimal currentPrice;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_winner_id")
+    private User currentWinner;
+
+    private LocalDateTime endTime;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer extensionCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
@@ -78,4 +91,7 @@ public class Auction extends AuditableEntity {
     private String reviewedBy;
 
     private LocalDateTime reviewedAt;
+
+    @Version
+    private Long version;
 }

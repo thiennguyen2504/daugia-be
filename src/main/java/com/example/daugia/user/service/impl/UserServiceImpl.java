@@ -5,6 +5,7 @@ import com.example.daugia.common.exception.ResourceNotFoundException;
 import com.example.daugia.user.mapper.UserMapper;
 import com.example.daugia.user.repository.UserRepository;
 import com.example.daugia.user.service.UserService;
+import com.example.daugia.user.util.UserNameUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -40,11 +41,9 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (fullName != null && !fullName.isBlank()) {
-            String[] nameParts = fullName.trim().split("\\s+");
+            String[] nameParts = UserNameUtils.splitFullName(fullName);
             user.setFirstname(nameParts[0]);
-            user.setLastname(nameParts.length > 1
-                    ? String.join(" ", java.util.Arrays.copyOfRange(nameParts, 1, nameParts.length))
-                    : "");
+            user.setLastname(nameParts[1]);
         }
 
         if (phone != null && !phone.isBlank()) {

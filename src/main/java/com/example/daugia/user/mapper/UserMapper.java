@@ -3,9 +3,10 @@ package com.example.daugia.user.mapper;
 import com.example.daugia.user.dto.UserDto;
 import com.example.daugia.user.entity.User;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
-    @org.mapstruct.Mapping(target = "fullName", expression = "java(user.getFirstname() + \" \" + user.getLastname())")
+    @Mapping(target = "fullName", source = "fullName")
     UserDto toDto(User user);
 }

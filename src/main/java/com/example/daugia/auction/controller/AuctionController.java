@@ -17,8 +17,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.Validator;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,8 +29,6 @@ import java.util.List;
 public class AuctionController {
 
     private final AuctionService auctionService;
-    private final ObjectMapper   objectMapper;
-    private final Validator      validator;
 
     // ─── PUBLIC / BIDDER ──────────────────────────────────────────────────────
 
@@ -74,17 +70,9 @@ public class AuctionController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<ApiResponse<AuctionResponse>> create(
-            @RequestParam("request") String requestJson,
+            @RequestPart("request") @Valid AuctionCreateRequest request,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,
             @AuthenticationPrincipal Jwt jwt) throws IOException {
-        
-        AuctionCreateRequest request = objectMapper.readValue(requestJson, AuctionCreateRequest.class);
-        
-        // Manual validation
-        var violations = validator.validate(request);
-        if (!violations.isEmpty()) {
-            throw new jakarta.validation.ConstraintViolationException(violations);
-        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Auction submitted for review",

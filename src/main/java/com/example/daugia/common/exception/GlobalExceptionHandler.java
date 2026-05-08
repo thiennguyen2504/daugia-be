@@ -1,6 +1,9 @@
 package com.example.daugia.common.exception;
 
 import com.example.daugia.common.dto.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -23,6 +27,27 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("status", HttpStatus.BAD_REQUEST.value());
+        data.put("path", extractPath(request));
+        data.put("errors", errors);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Validation failed", data));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleConstraintViolationException(
+            ConstraintViolationException ex,
+            WebRequest request) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation -> {
+            String field = violation.getPropertyPath() == null
+                    ? "request"
+                    : violation.getPropertyPath().toString();
+            errors.put(field, violation.getMessage());
+        });
 
         Map<String, Object> data = new HashMap<>();
         data.put("status", HttpStatus.BAD_REQUEST.value());
@@ -51,9 +76,17 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleOptimisticLockingFailureException(
+            OptimisticLockingFailureException ex,
+            WebRequest request) {
+        return buildErrorResponse(HttpStatus.CONFLICT, "Auction was modified concurrently, please retry.", request);
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleUncategorizedException(Exception ex, WebRequest request) {
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
+        log.error("Unhandled exception", ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", request);
     }
 
     private ResponseEntity<ApiResponse<Map<String, Object>>> buildErrorResponse(

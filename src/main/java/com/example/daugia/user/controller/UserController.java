@@ -6,13 +6,18 @@ import com.example.daugia.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -36,11 +41,12 @@ public class UserController {
 
     @PutMapping(value = "/profile", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
+    @Transactional
     public ResponseEntity<ApiResponse<UserDto>> updateProfile(
             @RequestParam(value = "fullName", required = false) String fullName,
             @RequestParam(value = "phone",    required = false) String phone,
-            @RequestParam(value = "avatar",   required = false) org.springframework.web.multipart.MultipartFile avatar,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) throws java.io.IOException {
+            @RequestParam(value = "avatar",   required = false) MultipartFile avatar,
+            @AuthenticationPrincipal Jwt jwt) throws IOException {
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully",
                 userService.updateProfile(jwt.getSubject(), fullName, phone, avatar)));
     }

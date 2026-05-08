@@ -57,3 +57,15 @@ jwt:
   refresh-token-expiration: 604800000 # 7 days
 domain:
   url: http://localhost:3000
+
+auction:
+  scheduler:
+    enabled: false
+  redis:
+    pubsub:
+      enabled: false
+  deposit:
+    ratio: 0.10
+  antinsiping:
+    window-seconds: 60
+    extension-seconds: 120

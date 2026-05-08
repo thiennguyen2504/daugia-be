@@ -35,3 +35,15 @@ cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:demo}
   api-key: ${CLOUDINARY_API_KEY:demo}
   api-secret: ${CLOUDINARY_API_SECRET:demo}
+
+auction:
+  scheduler:
+    enabled: true
+  redis:
+    pubsub:
+      enabled: true
+  deposit:
+    ratio: 0.10
+  antinsiping:
+    window-seconds: 60
+    extension-seconds: 120

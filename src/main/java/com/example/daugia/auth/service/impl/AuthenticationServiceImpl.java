@@ -24,14 +24,13 @@ import com.example.daugia.auth.service.AuthenticationService;
 import com.example.daugia.auth.service.EmailService;
 import com.example.daugia.auth.service.OtpService;
 import com.example.daugia.auth.service.TokenBlacklistService;
+import com.example.daugia.user.util.UserNameUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -60,11 +59,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new DuplicateResourceException("Phone number already registered");
         }
 
-        String[] nameParts = request.getFullName().trim().split("\\s+");
+        String[] nameParts = UserNameUtils.splitFullName(request.getFullName());
         String firstname = nameParts[0];
-        String lastname = nameParts.length > 1
-                ? String.join(" ", java.util.Arrays.copyOfRange(nameParts, 1, nameParts.length))
-                : "";
+        String lastname = nameParts[1];
 
         Role role = roleRepository.findByName(request.getRole().name())
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + request.getRole().name()));

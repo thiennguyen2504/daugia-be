@@ -3,8 +3,12 @@ package com.example.daugia.auction.scheduler;
 import com.example.daugia.auction.entity.Auction;
 import com.example.daugia.auction.entity.AuctionStatus;
 import com.example.daugia.auction.repository.AuctionRepository;
+import com.example.daugia.common.event.AuctionEndedEvent;
+import com.example.daugia.common.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,13 +17,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
+@ConditionalOnProperty(name = "auction.scheduler.enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class AuctionScheduler {
 
     private final AuctionRepository auctionRepository;
+    private final DomainEventPublisher eventPublisher;
 
-    @Scheduled(fixedDelay = 60_000)
+    @Scheduled(fixedRate = 60_000)
+    @SchedulerLock(name = "activateApprovedAuctions", lockAtMostFor = "PT55S", lockAtLeastFor = "PT10S")
     @Transactional
     public void activateApprovedAuctions() {
         List<Auction> ready = auctionRepository.findApprovedReadyToActivate(LocalDateTime.now());
@@ -30,12 +37,21 @@ public class AuctionScheduler {
         }
     }
 
-    @Scheduled(fixedDelay = 60_000)
+    @Scheduled(fixedRate = 60_000)
+    @SchedulerLock(name = "endActiveAuctions", lockAtMostFor = "PT55S", lockAtLeastFor = "PT10S")
     @Transactional
     public void endActiveAuctions() {
         List<Auction> ended = auctionRepository.findActiveReadyToEnd(LocalDateTime.now());
         if (!ended.isEmpty()) {
-            ended.forEach(a -> a.setStatus(AuctionStatus.ENDED));
+            ended.forEach(a -> {
+                a.setStatus(AuctionStatus.ENDED);
+                eventPublisher.publish(new AuctionEndedEvent(
+                        a.getId(),
+                        a.getCurrentWinner() == null ? null : a.getCurrentWinner().getId(),
+                        a.getCurrentPrice(),
+                        a.getSeller().getEmail(),
+                        a.getSeller().getFullName()));
+            });
             auctionRepository.saveAll(ended);
             log.info("[SCHEDULER] Ended {} auctions", ended.size());
         }

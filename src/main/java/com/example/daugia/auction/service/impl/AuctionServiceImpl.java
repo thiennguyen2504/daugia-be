@@ -8,6 +8,7 @@ import com.example.daugia.auction.mapper.AuctionMapper;
 import com.example.daugia.auction.repository.AuctionImageRepository;
 import com.example.daugia.auction.repository.AuctionRepository;
 import com.example.daugia.auction.service.AuctionService;
+import com.example.daugia.auction.specification.AuctionSpecification;
 import com.example.daugia.category.entity.Category;
 import com.example.daugia.category.repository.CategoryRepository;
 import com.example.daugia.common.dto.PageResponse;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,6 +81,7 @@ public class AuctionServiceImpl implements AuctionService {
                 .buyNowPrice(request.getBuyNowPrice())
                 .biddingStartTime(request.getBiddingStartTime())
                 .biddingEndTime(request.getBiddingEndTime())
+                .endTime(request.getBiddingEndTime())
                 .status(AuctionStatus.PENDING)
                 .seller(seller)
                 .category(category)
@@ -133,9 +136,7 @@ public class AuctionServiceImpl implements AuctionService {
     public PageResponse<AuctionSummaryResponse> searchPublic(AuctionFilterRequest filter, int page, int size) {
         Pageable pageable = buildPageable(filter, page, size);
         Page<AuctionSummaryResponse> resultPage = auctionRepository
-                .searchPublic(filter.getSearch(), filter.getCategoryId(),
-                        filter.getMinPrice(), filter.getMaxPrice(),
-                        filter.getStartFrom(), filter.getStartTo(), pageable)
+                .findAll(buildPublicSpecification(filter), pageable)
                 .map(auctionMapper::toSummary);
         return PageResponse.from(resultPage);
     }
@@ -173,7 +174,7 @@ public class AuctionServiceImpl implements AuctionService {
     public PageResponse<AuctionSummaryResponse> searchAdmin(AuctionFilterRequest filter, int page, int size) {
         Pageable pageable = buildPageable(filter, page, size);
         Page<AuctionSummaryResponse> resultPage = auctionRepository
-                .searchAdmin(filter.getStatus(), filter.getSearch(), filter.getCategoryId(), pageable)
+                .findAll(buildAdminSpecification(filter), pageable)
                 .map(auctionMapper::toSummary);
         return PageResponse.from(resultPage);
     }
@@ -210,16 +211,18 @@ public class AuctionServiceImpl implements AuctionService {
 
         // Approved
         auction.setStatus(AuctionStatus.APPROVED);
+        auction.setCurrentPrice(auction.getStartingPrice());
+        auction.setEndTime(auction.getBiddingEndTime());
         auction.setRejectionReason(null);
         auction.setReviewedBy(adminEmail);
         auction.setReviewedAt(LocalDateTime.now());
         Auction saved = auctionRepository.save(auction);
 
         eventPublisher.publish(new AuctionApprovedEvent(
-                saved.getId(), saved.getProductName(),
-                saved.getSeller().getEmail(),
-                saved.getSeller().getFirstname() + " " + saved.getSeller().getLastname(),
-                saved.getBiddingStartTime()));
+                    saved.getId(), saved.getProductName(),
+                    saved.getSeller().getEmail(),
+                    saved.getSeller().getFullName(),
+                    saved.getBiddingStartTime()));
 
         return auctionMapper.toResponse(saved);
     }
@@ -235,5 +238,21 @@ public class AuctionServiceImpl implements AuctionService {
                 ? Sort.by(Sort.Direction.ASC,  sortBy)
                 : Sort.by(Sort.Direction.DESC, sortBy);
         return PageRequest.of(page, size, sort);
+    }
+
+    private Specification<Auction> buildPublicSpecification(AuctionFilterRequest filter) {
+        return Specification.where(AuctionSpecification.publicVisible())
+                .and(AuctionSpecification.withSearch(filter.getSearch()))
+                .and(AuctionSpecification.withCategory(filter.getCategoryId()))
+                .and(AuctionSpecification.withMinPrice(filter.getMinPrice()))
+                .and(AuctionSpecification.withMaxPrice(filter.getMaxPrice()))
+                .and(AuctionSpecification.withStartFrom(filter.getStartFrom()))
+                .and(AuctionSpecification.withStartTo(filter.getStartTo()));
+    }
+
+    private Specification<Auction> buildAdminSpecification(AuctionFilterRequest filter) {
+        return Specification.where(AuctionSpecification.withStatus(filter.getStatus()))
+                .and(AuctionSpecification.withSearch(filter.getSearch()))
+                .and(AuctionSpecification.withCategory(filter.getCategoryId()));
     }
 }

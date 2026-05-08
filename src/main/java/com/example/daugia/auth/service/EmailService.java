@@ -7,4 +7,6 @@ public interface EmailService {
     void sendOtpEmail(String to, String name, String otp, String purpose);
     void sendAuctionApprovedEmail(String to, String sellerName, String productName, LocalDateTime startTime);
     void sendAuctionRejectedEmail(String to, String sellerName, String productName, String reason);
+    void sendAuctionWinnerEmail(String to, String winnerName, String productName);
+    void sendAuctionSoldEmail(String to, String sellerName, String productName);
 }

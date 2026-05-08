@@ -79,6 +79,30 @@ public class EmailServiceImpl implements EmailService {
         sendHtmlEmail(to, subject, content);
     }
 
+    @Async
+    @Override
+    public void sendAuctionWinnerEmail(String to, String winnerName, String productName) {
+        String subject = "SmartAuction - You won!";
+        String content = "<div style='font-family:Arial,sans-serif;line-height:1.6'>"
+                + "<h2>You won!</h2>"
+                + "<p>Hi " + winnerName + ",</p>"
+                + "<p>Your bid won the auction for <strong>" + productName + "</strong>.</p>"
+                + "</div>";
+        sendHtmlEmail(to, subject, content);
+    }
+
+    @Async
+    @Override
+    public void sendAuctionSoldEmail(String to, String sellerName, String productName) {
+        String subject = "SmartAuction - Your item sold!";
+        String content = "<div style='font-family:Arial,sans-serif;line-height:1.6'>"
+                + "<h2>Your item sold!</h2>"
+                + "<p>Hi " + sellerName + ",</p>"
+                + "<p>Your auction for <strong>" + productName + "</strong> has ended with a winning bid.</p>"
+                + "</div>";
+        sendHtmlEmail(to, subject, content);
+    }
+
     private void sendHtmlEmail(String to, String subject, String content) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
