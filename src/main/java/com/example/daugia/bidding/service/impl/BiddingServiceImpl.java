@@ -5,6 +5,7 @@ import com.example.daugia.auction.entity.Auction;
 import com.example.daugia.auction.entity.AuctionStatus;
 import com.example.daugia.auction.repository.AuctionRepository;
 import com.example.daugia.bidding.dto.BidResponse;
+import com.example.daugia.bidding.service.BidHistoryService;
 import com.example.daugia.bidding.entity.Bid;
 import com.example.daugia.bidding.entity.BidStatus;
 import com.example.daugia.bidding.entity.BidType;
@@ -14,11 +15,16 @@ import com.example.daugia.bidding.service.BiddingService;
 import com.example.daugia.bidding.service.LeaderboardService;
 import com.example.daugia.bidding.service.RedisBidPublisher;
 import com.example.daugia.bidding.util.EmailMaskingUtils;
+import com.example.daugia.bidding.validator.BidValidator;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditJsonUtils;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditService;
+import com.example.daugia.bidding.validator.BidValidator;
 import com.example.daugia.common.event.AuctionEndedEvent;
 import com.example.daugia.common.event.BidPlacedEvent;
 import com.example.daugia.common.event.DomainEventPublisher;
 import com.example.daugia.common.exception.ResourceNotFoundException;
-import com.example.daugia.deposit.service.DepositService;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +42,15 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class BiddingServiceImpl implements BiddingService {
 
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final UserRepository userRepository;
-    private final DepositService depositService;
+    private final BidValidator bidValidator;
+    private final BidHistoryService bidHistoryService;
+    private final AuditService auditService;
     private final ObjectProvider<AutoBidService> autoBidServiceProvider;
     private final DomainEventPublisher eventPublisher;
     private final RedisBidPublisher redisBidPublisher;
@@ -56,9 +65,12 @@ public class BiddingServiceImpl implements BiddingService {
         User bidder = userRepository.findByEmail(bidderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Bidder not found"));
 
-        BidResponse rejection = validateBid(auction, bidder, amount);
-        if (rejection != null) {
-            return rejection;
+        var rejection = bidValidator.validate(auction, bidder, amount);
+        if (rejection.isPresent()) {
+            auditService.log(bidderEmail, AuditAction.BID_REJECTED, "AUCTION", String.valueOf(auctionId),
+                AuditOutcome.FAILURE,
+                AuditJsonUtils.toJson("auctionId", auctionId, "amount", amount, "rejectionReason", rejection.get().getRejectionReason()));
+            return rejection.get();
         }
 
         Bid bid = bidRepository.save(Bid.builder()
@@ -68,6 +80,7 @@ public class BiddingServiceImpl implements BiddingService {
                 .bidType(bidType)
                 .status(BidStatus.WINNING)
                 .build());
+        bidHistoryService.record(auctionId, bidder.getEmail(), amount, auction.getBidIncrement(), bidType);
 
         bidRepository.findTopByAuctionIdAndStatusOrderByAmountDesc(auctionId, BidStatus.WINNING)
                 .filter(previous -> !previous.getId().equals(bid.getId()))
@@ -80,10 +93,15 @@ public class BiddingServiceImpl implements BiddingService {
         if (auction.getBuyNowPrice() != null && amount.compareTo(auction.getBuyNowPrice()) == 0) {
             auction.setStatus(AuctionStatus.ENDED);
             eventPublisher.publish(new AuctionEndedEvent(auction.getId(), bidder.getId(), amount,
-                    auction.getSeller().getEmail(), auction.getSeller().getFullName()));
+                    auction.getProductName(),
+                    auction.getSeller().getEmail(), auction.getSeller().getFullName(),
+                    bidder.getEmail(), bidder.getFullName()));
         }
 
         eventPublisher.publish(new BidPlacedEvent(auctionId, bid.getId(), bidder.getId(), amount));
+    auditService.log(bidderEmail, AuditAction.BID_PLACED, "BID", String.valueOf(bid.getId()),
+        AuditOutcome.SUCCESS,
+        AuditJsonUtils.toJson("auctionId", auctionId, "amount", amount));
         BidResponse response = toAcceptedResponse(auction, bid, bidder.getEmail());
         leaderboardService.updateLeaderboard(auctionId, bidder.getEmail(), amount, auction.getEndTime());
         redisBidPublisher.publish(response);
@@ -125,42 +143,12 @@ public class BiddingServiceImpl implements BiddingService {
                 .orElseThrow(() -> new ResourceNotFoundException("No bids found"));
     }
 
-    private BidResponse validateBid(Auction auction, User bidder, BigDecimal amount) {
-        if (auction.getStatus() != AuctionStatus.ACTIVE) {
-            return rejected(auction, "Auction not live");
-        }
-        if (auction.getEndTime() == null || !LocalDateTime.now().isBefore(auction.getEndTime())) {
-            return rejected(auction, "Auction has ended");
-        }
-        if (!depositService.hasDeposit(auction.getId(), bidder.getId())) {
-            return rejected(auction, "Deposit required before bidding");
-        }
-        BigDecimal currentPrice = auction.getCurrentPrice() == null ? auction.getStartingPrice() : auction.getCurrentPrice();
-        if (amount.compareTo(currentPrice.add(auction.getBidIncrement())) < 0) {
-            return rejected(auction, "Bid too low");
-        }
-        if (auction.getBuyNowPrice() != null && amount.compareTo(auction.getBuyNowPrice()) > 0) {
-            return rejected(auction, "Bid exceeds buy now price");
-        }
-        return null;
-    }
-
     private void applyAntiSniping(Auction auction) {
         long secondsRemaining = Duration.between(LocalDateTime.now(), auction.getEndTime()).getSeconds();
         if (secondsRemaining <= auctionProperties.antinsiping().windowSeconds()) {
             auction.setEndTime(auction.getEndTime().plusSeconds(auctionProperties.antinsiping().extensionSeconds()));
             auction.setExtensionCount(auction.getExtensionCount() + 1);
         }
-    }
-
-    private BidResponse rejected(Auction auction, String reason) {
-        return BidResponse.builder()
-                .auctionId(auction.getId())
-                .currentPrice(auction.getCurrentPrice())
-                .endTime(auction.getEndTime())
-                .status("REJECTED")
-                .rejectionReason(reason)
-                .build();
     }
 
     private BidResponse toAcceptedResponse(Auction auction, Bid bid, String winnerEmail) {

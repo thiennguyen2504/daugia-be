@@ -15,8 +15,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -54,6 +52,10 @@ public class User {
     private Role role;
 
     private boolean enabled;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean locked = false;
 
     public String getUsername() {
         return email;

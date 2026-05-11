@@ -1,9 +1,11 @@
 package com.example.daugia.bidding.controller;
 
 import com.example.daugia.bidding.dto.BidResponse;
+import com.example.daugia.bidding.dto.BidHistoryEntryResponse;
 import com.example.daugia.bidding.dto.LeaderboardEntryResponse;
 import com.example.daugia.bidding.dto.PlaceBidRequest;
 import com.example.daugia.bidding.entity.BidType;
+import com.example.daugia.bidding.service.BidHistoryService;
 import com.example.daugia.bidding.service.BiddingService;
 import com.example.daugia.bidding.service.LeaderboardService;
 import com.example.daugia.common.dto.ApiResponse;
@@ -29,6 +31,7 @@ import java.util.List;
 public class BidRestController {
 
     private final BiddingService biddingService;
+    private final BidHistoryService bidHistoryService;
     private final LeaderboardService leaderboardService;
 
     @PostMapping("/bids")
@@ -50,6 +53,16 @@ public class BidRestController {
         return ResponseEntity.ok(ApiResponse.success("Bid history fetched",
                 PageResponse.from(biddingService.getBidHistory(auctionId, pageable))));
     }
+
+        @GetMapping("/history")
+        @Operation(summary = "Get immutable bid history")
+        public ResponseEntity<ApiResponse<PageResponse<BidHistoryEntryResponse>>> immutableHistory(
+            @PathVariable Long auctionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(ApiResponse.success("Bid history fetched",
+            bidHistoryService.getHistory(auctionId, page, size)));
+        }
 
     @GetMapping("/leaderboard")
     @Operation(summary = "Get public leaderboard")

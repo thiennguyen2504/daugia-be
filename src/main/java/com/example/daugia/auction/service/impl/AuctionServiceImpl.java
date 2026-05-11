@@ -12,6 +12,10 @@ import com.example.daugia.auction.specification.AuctionSpecification;
 import com.example.daugia.category.entity.Category;
 import com.example.daugia.category.repository.CategoryRepository;
 import com.example.daugia.common.dto.PageResponse;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditJsonUtils;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditService;
 import com.example.daugia.common.event.AuctionApprovedEvent;
 import com.example.daugia.common.event.AuctionCreatedEvent;
 import com.example.daugia.common.event.AuctionRejectedEvent;
@@ -53,6 +57,7 @@ public class AuctionServiceImpl implements AuctionService {
     private final AuctionMapper          auctionMapper;
     private final StorageService         storageService;
     private final DomainEventPublisher   eventPublisher;
+    private final AuditService           auditService;
 
     // ─── SELLER ───────────────────────────────────────────────────────────────
 
@@ -112,6 +117,9 @@ public class AuctionServiceImpl implements AuctionService {
 
         eventPublisher.publish(new AuctionCreatedEvent(
                 saved.getId(), saved.getProductName(), seller.getEmail()));
+        auditService.log(sellerEmail, AuditAction.AUCTION_CREATED, "AUCTION", String.valueOf(saved.getId()),
+            AuditOutcome.SUCCESS,
+            AuditJsonUtils.toJson("productName", saved.getProductName(), "seller", seller.getEmail()));
 
         return auctionMapper.toResponse(saved);
     }
@@ -203,8 +211,11 @@ public class AuctionServiceImpl implements AuctionService {
             eventPublisher.publish(new AuctionRejectedEvent(
                     saved.getId(), saved.getProductName(),
                     saved.getSeller().getEmail(),
-                    saved.getSeller().getFirstname() + " " + saved.getSeller().getLastname(),
+                    saved.getSeller().getFullName(),
                     reason));
+                auditService.log(adminEmail, AuditAction.AUCTION_REVIEWED_REJECTED, "AUCTION", String.valueOf(saved.getId()),
+                    AuditOutcome.SUCCESS,
+                    AuditJsonUtils.toJson("productName", saved.getProductName(), "reviewer", adminEmail, "reason", reason));
 
             return auctionMapper.toResponse(saved);
         }
@@ -223,6 +234,9 @@ public class AuctionServiceImpl implements AuctionService {
                     saved.getSeller().getEmail(),
                     saved.getSeller().getFullName(),
                     saved.getBiddingStartTime()));
+        auditService.log(adminEmail, AuditAction.AUCTION_REVIEWED_APPROVED, "AUCTION", String.valueOf(saved.getId()),
+            AuditOutcome.SUCCESS,
+            AuditJsonUtils.toJson("productName", saved.getProductName(), "reviewer", adminEmail));
 
         return auctionMapper.toResponse(saved);
     }

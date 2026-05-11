@@ -1,6 +1,7 @@
 package com.example.daugia.user.controller;
 
 import com.example.daugia.common.dto.ApiResponse;
+import com.example.daugia.common.dto.PageResponse;
 import com.example.daugia.user.dto.UserDto;
 import com.example.daugia.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -29,8 +29,10 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsers() {
-        return ResponseEntity.ok(ApiResponse.success("Fetched users successfully", userService.findAllUsers()));
+    public ResponseEntity<ApiResponse<PageResponse<UserDto>>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success("Fetched users successfully", userService.getAllUsers(page, size)));
     }
 
     @GetMapping("/{id}")

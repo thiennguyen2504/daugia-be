@@ -9,8 +9,11 @@ import com.example.daugia.bidding.entity.BidStatus;
 import com.example.daugia.bidding.entity.BidType;
 import com.example.daugia.bidding.repository.BidRepository;
 import com.example.daugia.bidding.service.AutoBidService;
+import com.example.daugia.bidding.service.BidHistoryService;
 import com.example.daugia.bidding.service.LeaderboardService;
 import com.example.daugia.bidding.service.RedisBidPublisher;
+import com.example.daugia.bidding.validator.BidValidator;
+import com.example.daugia.common.audit.AuditService;
 import com.example.daugia.category.entity.Category;
 import com.example.daugia.common.event.DomainEventPublisher;
 import com.example.daugia.deposit.service.DepositService;
@@ -20,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.ObjectProvider;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,12 +43,14 @@ class BiddingServiceImplTest {
     @Mock DepositService depositService;
     @Mock AutoBidService autoBidService;
     @Mock ObjectProvider<AutoBidService> autoBidServiceProvider;
+    @Mock BidHistoryService bidHistoryService;
+    @Mock AuditService auditService;
     @Mock DomainEventPublisher eventPublisher;
     @Mock RedisBidPublisher redisBidPublisher;
     @Mock LeaderboardService leaderboardService;
     @Mock AuctionProperties auctionProperties;
 
-    @InjectMocks BiddingServiceImpl biddingService;
+    BiddingServiceImpl biddingService;
 
     private Auction auction;
     private User bidder;
@@ -54,6 +58,21 @@ class BiddingServiceImplTest {
     @BeforeEach
     void setUp() {
         lenient().when(autoBidServiceProvider.getObject()).thenReturn(autoBidService);
+
+        BidValidator bidValidator = new BidValidator(depositService);
+        biddingService = new BiddingServiceImpl(
+            auctionRepository,
+            bidRepository,
+            userRepository,
+            bidValidator,
+                bidHistoryService,
+                auditService,
+            autoBidServiceProvider,
+            eventPublisher,
+            redisBidPublisher,
+            leaderboardService,
+            auctionProperties);
+
         User seller = User.builder().id(1L).email("seller@test.com").firstname("Sell").lastname("Er").build();
         bidder = User.builder().id(2L).email("bidder@test.com").firstname("Bid").lastname("Der").build();
         auction = Auction.builder()

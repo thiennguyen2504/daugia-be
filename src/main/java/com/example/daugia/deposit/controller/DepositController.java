@@ -3,7 +3,7 @@ package com.example.daugia.deposit.controller;
 import com.example.daugia.common.dto.ApiResponse;
 import com.example.daugia.deposit.entity.Deposit;
 import com.example.daugia.deposit.service.DepositService;
-import com.example.daugia.user.repository.UserRepository;
+import com.example.daugia.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,16 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class DepositController {
 
     private final DepositService depositService;
-    private final UserRepository userRepository;
+        private final UserService userService;
 
     @PostMapping
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Hold bidder deposit for an auction")
     public ResponseEntity<ApiResponse<Deposit>> holdDeposit(@PathVariable Long auctionId,
                                                             @AuthenticationPrincipal Jwt jwt) {
-        Long bidderId = userRepository.findByEmail(jwt.getSubject())
-                .orElseThrow(() -> new com.example.daugia.common.exception.ResourceNotFoundException("Bidder not found"))
-                .getId();
+        Long bidderId = userService.resolveUserId(jwt.getSubject());
         return ResponseEntity.ok(ApiResponse.success("Deposit held",
                 depositService.holdDeposit(auctionId, bidderId, depositService.getDepositAmount(auctionId))));
     }

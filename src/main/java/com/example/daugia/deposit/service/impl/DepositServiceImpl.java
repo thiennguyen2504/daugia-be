@@ -7,6 +7,10 @@ import com.example.daugia.common.event.DepositForfeitedEvent;
 import com.example.daugia.common.event.DepositHeldEvent;
 import com.example.daugia.common.event.DepositReleasedEvent;
 import com.example.daugia.common.event.DomainEventPublisher;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditJsonUtils;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditService;
 import com.example.daugia.common.exception.DuplicateResourceException;
 import com.example.daugia.common.exception.ResourceNotFoundException;
 import com.example.daugia.deposit.entity.Deposit;
@@ -33,6 +37,7 @@ public class DepositServiceImpl implements DepositService {
     private final UserRepository userRepository;
     private final AuctionProperties auctionProperties;
     private final DomainEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -55,6 +60,9 @@ public class DepositServiceImpl implements DepositService {
                 .heldAt(LocalDateTime.now())
                 .build());
         eventPublisher.publish(new DepositHeldEvent(auctionId, bidderId, requiredAmount));
+        auditService.log(bidder.getEmail(), AuditAction.DEPOSIT_HELD, "DEPOSIT", String.valueOf(deposit.getId()),
+            AuditOutcome.SUCCESS,
+            AuditJsonUtils.toJson("auctionId", auctionId, "amount", requiredAmount));
         return deposit;
     }
 
@@ -66,6 +74,17 @@ public class DepositServiceImpl implements DepositService {
         deposit.setStatus(DepositStatus.RELEASED);
         deposit.setReleasedAt(LocalDateTime.now());
         eventPublisher.publish(new DepositReleasedEvent(auctionId, bidderId));
+        auditService.log(deposit.getBidder().getEmail(), AuditAction.DEPOSIT_RELEASED, "DEPOSIT", String.valueOf(deposit.getId()),
+            AuditOutcome.SUCCESS,
+            AuditJsonUtils.toJson("auctionId", auctionId, "bidderId", bidderId));
+    }
+
+    @Override
+    @Transactional
+    public void releaseAllNonWinners(Long auctionId, Long winnerId) {
+        depositRepository.findAllByAuctionIdAndStatus(auctionId, DepositStatus.HELD).stream()
+                .filter(deposit -> winnerId == null || !winnerId.equals(deposit.getBidder().getId()))
+                .forEach(deposit -> releaseDeposit(auctionId, deposit.getBidder().getId()));
     }
 
     @Override
@@ -75,6 +94,9 @@ public class DepositServiceImpl implements DepositService {
                 .orElseThrow(() -> new ResourceNotFoundException("Deposit not found"));
         deposit.setStatus(DepositStatus.FORFEITED);
         eventPublisher.publish(new DepositForfeitedEvent(auctionId, bidderId));
+        auditService.log(deposit.getBidder().getEmail(), AuditAction.DEPOSIT_FORFEITED, "DEPOSIT", String.valueOf(deposit.getId()),
+            AuditOutcome.SUCCESS,
+            AuditJsonUtils.toJson("auctionId", auctionId, "bidderId", bidderId));
     }
 
     @Override

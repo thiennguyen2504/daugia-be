@@ -45,12 +45,16 @@ public class AuctionScheduler {
         if (!ended.isEmpty()) {
             ended.forEach(a -> {
                 a.setStatus(AuctionStatus.ENDED);
+                var winner = a.getCurrentWinner();
                 eventPublisher.publish(new AuctionEndedEvent(
                         a.getId(),
-                        a.getCurrentWinner() == null ? null : a.getCurrentWinner().getId(),
+                    winner == null ? null : winner.getId(),
                         a.getCurrentPrice(),
+                    a.getProductName(),
                         a.getSeller().getEmail(),
-                        a.getSeller().getFullName()));
+                    a.getSeller().getFullName(),
+                    winner == null ? null : winner.getEmail(),
+                    winner == null ? null : winner.getFullName()));
             });
             auctionRepository.saveAll(ended);
             log.info("[SCHEDULER] Ended {} auctions", ended.size());

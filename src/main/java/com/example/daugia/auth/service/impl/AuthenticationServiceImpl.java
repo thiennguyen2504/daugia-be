@@ -11,7 +11,6 @@ import com.example.daugia.auth.dto.ResetPasswordRequest;
 import com.example.daugia.auth.dto.VerifyOtpRequest;
 import com.example.daugia.user.entity.OtpPurpose;
 import com.example.daugia.user.entity.Role;
-import com.example.daugia.user.entity.RoleType;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.common.exception.AppException;
 import com.example.daugia.common.exception.DuplicateResourceException;
@@ -24,17 +23,27 @@ import com.example.daugia.auth.service.AuthenticationService;
 import com.example.daugia.auth.service.EmailService;
 import com.example.daugia.auth.service.OtpService;
 import com.example.daugia.auth.service.TokenBlacklistService;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditJsonUtils;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditService;
 import com.example.daugia.user.util.UserNameUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserRepository repository;
     private final RoleRepository roleRepository;
@@ -43,6 +52,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final EmailService emailService;
     private final OtpService otpService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -80,6 +90,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         String otp = otpService.generateAndSaveOtp(request.getEmail(), OtpPurpose.REGISTRATION);
         emailService.sendOtpEmail(request.getEmail(), firstname, otp, "account verification");
+        auditService.log(request.getEmail(), AuditAction.REGISTER, "USER", request.getEmail(),
+            AuditOutcome.SUCCESS, currentRequest(), AuditJsonUtils.toJson("role", request.getRole()));
     }
 
     @Override
@@ -103,14 +115,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (!user.isEnabled()) {
+            auditService.log(request.getIdentifier(), AuditAction.LOGIN_FAILURE, "USER", request.getIdentifier(),
+                    AuditOutcome.FAILURE, currentRequest(), AuditJsonUtils.toJson("reason", "Account is not verified"));
             throw new AppException("Account is not verified. Please verify your OTP.", HttpStatus.FORBIDDEN);
         }
 
+        if (user.isLocked()) {
+            auditService.log(request.getIdentifier(), AuditAction.LOGIN_FAILURE, "USER", request.getIdentifier(),
+                    AuditOutcome.FAILURE, currentRequest(), AuditJsonUtils.toJson("reason", "Account is locked"));
+            throw new AppException("Account is locked", HttpStatus.FORBIDDEN);
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            auditService.log(request.getIdentifier(), AuditAction.LOGIN_FAILURE, "USER", request.getIdentifier(),
+                    AuditOutcome.FAILURE, currentRequest(), AuditJsonUtils.toJson("reason", "Invalid credentials"));
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        return buildAuthenticationResponse(user);
+        AuthenticationResponse response = buildAuthenticationResponse(user);
+        auditService.log(user.getEmail(), AuditAction.LOGIN_SUCCESS, "USER", user.getEmail(),
+                AuditOutcome.SUCCESS, currentRequest(), null);
+        return response;
     }
 
     @Override
@@ -150,6 +175,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (token != null) {
             tokenBlacklistService.blacklistToken(token);
         }
+        String actor = jwtService.extractUsername(token);
+        auditService.log(actor, AuditAction.LOGOUT, "USER", actor != null ? actor : "ANONYMOUS",
+                AuditOutcome.SUCCESS, currentRequest(), null);
     }
 
     @Override
@@ -176,6 +204,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         repository.save(user);
+        auditService.log(request.getEmail(), AuditAction.PASSWORD_RESET, "USER", request.getEmail(),
+            AuditOutcome.SUCCESS, currentRequest(), null);
     }
 
     @Override
@@ -198,6 +228,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         repository.save(user);
+        auditService.log(currentUserEmail, AuditAction.PASSWORD_CHANGE, "USER", currentUserEmail,
+            AuditOutcome.SUCCESS, currentRequest(), null);
     }
 
     private AuthenticationResponse buildAuthenticationResponse(User user) {
@@ -206,5 +238,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .refreshToken(jwtService.generateRefreshToken(user))
                 .role(user.getRole().getName())
                 .build();
+    }
+
+    private HttpServletRequest currentRequest() {
+        var attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletRequestAttributes) {
+            return servletRequestAttributes.getRequest();
+        }
+        return null;
     }
 }

@@ -1,30 +1,45 @@
 package com.example.daugia.user.service.impl;
 
+import com.example.daugia.common.dto.PageResponse;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditJsonUtils;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditService;
+import com.example.daugia.common.exception.AppException;
 import com.example.daugia.user.dto.UserDto;
+import com.example.daugia.user.dto.UserAccountLogDto;
 import com.example.daugia.common.exception.ResourceNotFoundException;
+import com.example.daugia.user.entity.UserAccountAction;
+import com.example.daugia.user.entity.UserAccountLog;
 import com.example.daugia.user.mapper.UserMapper;
+import com.example.daugia.user.repository.UserAccountLogRepository;
 import com.example.daugia.user.repository.UserRepository;
 import com.example.daugia.user.service.UserService;
 import com.example.daugia.user.util.UserNameUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     private final UserRepository repository;
+    private final UserAccountLogRepository userAccountLogRepository;
     private final UserMapper userMapper;
     private final com.example.daugia.common.storage.StorageService storageService;
+    private final AuditService auditService;
 
     @Override
-    public List<UserDto> findAllUsers() {
-        return repository.findAllWithRole().stream()
-                .map(userMapper::toDto)
-                .collect(Collectors.toList());
+    public PageResponse<UserDto> getAllUsers(int page, int size) {
+        var pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        return PageResponse.from(repository.findAll(pageable).map(userMapper::toDto));
     }
 
     @Override
@@ -35,7 +50,76 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    public Long resolveUserId(String email) {
+        return repository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email))
+                .getId();
+    }
+
+    @Override
+    @Transactional
+    public void lockUser(Long targetUserId, String adminEmail, String reason) {
+        var user = repository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole().getName())) {
+            throw new AppException("Cannot lock an ADMIN account", HttpStatus.FORBIDDEN);
+        }
+
+        user.setLocked(true);
+        repository.save(user);
+        userAccountLogRepository.save(UserAccountLog.builder()
+                .targetUser(user)
+                .performedBy(adminEmail)
+                .action(UserAccountAction.LOCK)
+                .reason(reason)
+                .build());
+            auditService.log(adminEmail, AuditAction.USER_LOCKED, "USER", String.valueOf(targetUserId),
+                AuditOutcome.SUCCESS,
+                AuditJsonUtils.toJson("reason", reason, "lockedBy", adminEmail));
+    }
+
+    @Override
+    @Transactional
+    public void unlockUser(Long targetUserId, String adminEmail, String reason) {
+        var user = repository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole().getName())) {
+            throw new AppException("Cannot lock an ADMIN account", HttpStatus.FORBIDDEN);
+        }
+
+        user.setLocked(false);
+        repository.save(user);
+        userAccountLogRepository.save(UserAccountLog.builder()
+                .targetUser(user)
+                .performedBy(adminEmail)
+                .action(UserAccountAction.UNLOCK)
+                .reason(reason)
+                .build());
+            auditService.log(adminEmail, AuditAction.USER_UNLOCKED, "USER", String.valueOf(targetUserId),
+                AuditOutcome.SUCCESS,
+                AuditJsonUtils.toJson("reason", reason, "unlockedBy", adminEmail));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserAccountLogDto> getAccountLogs(Long userId, int page, int size) {
+        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return PageResponse.from(userAccountLogRepository.findAllByTargetUser_Id(userId, pageable)
+                .map(log -> UserAccountLogDto.builder()
+                        .id(log.getId())
+                        .targetUserId(log.getTargetUser().getId())
+                        .targetUserEmail(log.getTargetUser().getEmail())
+                        .performedBy(log.getPerformedBy())
+                        .action(log.getAction())
+                        .reason(log.getReason())
+                        .createdAt(log.getCreatedAt())
+                        .build()));
+    }
+
+    @Override
+    @Transactional
     public UserDto updateProfile(String email, String fullName, String phone, org.springframework.web.multipart.MultipartFile avatar) throws java.io.IOException {
         com.example.daugia.user.entity.User user = repository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -62,5 +146,6 @@ public class UserServiceImpl implements UserService {
         }
 
         return userMapper.toDto(repository.save(user));
+        
     }
 }

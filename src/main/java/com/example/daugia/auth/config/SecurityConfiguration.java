@@ -2,6 +2,7 @@ package com.example.daugia.auth.config;
 
 import com.example.daugia.auth.filter.JwtBlacklistFilter;
 import com.example.daugia.auth.properties.JwtProperties;
+import com.example.daugia.common.filter.RequestLoggingFilter;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class SecurityConfiguration {
 
     private final JwtProperties jwtProperties;
     private final JwtBlacklistFilter jwtBlacklistFilter;
+        private final RequestLoggingFilter requestLoggingFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Value("${domain.url}")
@@ -66,6 +68,7 @@ public class SecurityConfiguration {
                                 "/swagger-ui.html")
                         .permitAll()
                         .anyRequest().authenticated())
+                .addFilterBefore(requestLoggingFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterBefore(jwtBlacklistFilter, BearerTokenAuthenticationFilter.class)
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

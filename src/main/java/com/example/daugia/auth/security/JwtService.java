@@ -9,7 +9,6 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.example.daugia.user.entity.Role;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.common.exception.TokenException;
 import com.example.daugia.auth.properties.JwtProperties;
@@ -19,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Date;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

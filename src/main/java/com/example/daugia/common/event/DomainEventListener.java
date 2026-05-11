@@ -1,12 +1,7 @@
 package com.example.daugia.common.event;
 
 import com.example.daugia.auth.service.EmailService;
-import com.example.daugia.auction.repository.AuctionRepository;
-import com.example.daugia.common.exception.ResourceNotFoundException;
-import com.example.daugia.deposit.entity.DepositStatus;
-import com.example.daugia.deposit.repository.DepositRepository;
 import com.example.daugia.deposit.service.DepositService;
-import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -22,9 +17,6 @@ public class DomainEventListener {
 
     private final EmailService emailService;
     private final DepositService depositService;
-    private final DepositRepository depositRepository;
-    private final AuctionRepository auctionRepository;
-    private final UserRepository userRepository;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCategoryCreated(CategoryCreatedEvent event) {
@@ -92,18 +84,11 @@ public class DomainEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAuctionEnded(AuctionEndedEvent event) {
-        var auction = auctionRepository.findById(event.getAuctionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
-        depositRepository.findAllByAuctionIdAndStatus(event.getAuctionId(), DepositStatus.HELD).stream()
-                .filter(deposit -> event.getWinnerId() == null
-                        || !event.getWinnerId().equals(deposit.getBidder().getId()))
-                .forEach(deposit -> depositService.releaseDeposit(event.getAuctionId(), deposit.getBidder().getId()));
+        depositService.releaseAllNonWinners(event.getAuctionId(), event.getWinnerId());
 
-        if (event.getWinnerId() != null) {
-            userRepository.findById(event.getWinnerId())
-                    .ifPresent(winner -> emailService.sendAuctionWinnerEmail(
-                            winner.getEmail(), winner.getFullName(), auction.getProductName()));
+        if (event.getWinnerEmail() != null && event.getWinnerName() != null) {
+            emailService.sendAuctionWinnerEmail(event.getWinnerEmail(), event.getWinnerName(), event.getProductName());
         }
-        emailService.sendAuctionSoldEmail(event.getSellerEmail(), event.getSellerName(), auction.getProductName());
+        emailService.sendAuctionSoldEmail(event.getSellerEmail(), event.getSellerName(), event.getProductName());
     }
 }
