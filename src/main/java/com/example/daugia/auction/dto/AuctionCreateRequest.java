@@ -32,7 +32,7 @@ public class AuctionCreateRequest {
     private BigDecimal buyNowPrice;
 
     @NotNull(message = "Category is required")
-    private Long categoryId;
+    private String categoryId;
 
     @NotNull(message = "Bidding start time is required")
     @Future(message = "Bidding start time must be in the future")

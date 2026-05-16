@@ -11,7 +11,6 @@ import com.example.daugia.bidding.service.LeaderboardService;
 import com.example.daugia.bidding.service.RedisBidPublisher;
 import com.example.daugia.category.entity.Category;
 import com.example.daugia.category.repository.CategoryRepository;
-import com.example.daugia.deposit.service.DepositService;
 import com.example.daugia.user.entity.Role;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.RoleRepository;
@@ -35,7 +34,6 @@ class BiddingFlowIntegrationTest {
 
     @jakarta.annotation.Resource BiddingService biddingService;
     @jakarta.annotation.Resource AutoBidService autoBidService;
-    @jakarta.annotation.Resource DepositService depositService;
     @jakarta.annotation.Resource BidRepository bidRepository;
     @jakarta.annotation.Resource AuctionRepository auctionRepository;
     @jakarta.annotation.Resource UserRepository userRepository;
@@ -47,14 +45,12 @@ class BiddingFlowIntegrationTest {
     @MockBean LeaderboardService leaderboardService;
 
     @Test
-    void depositBidAutoBidAndAntiSnipeExtension() throws InterruptedException {
+    void bidAutoBidAndAntiSnipeExtension() throws InterruptedException {
         User seller = user("seller-flow@test.com", "SELLER");
         User manualBidder = user("manual-flow@test.com", "BIDDER");
         User autoBidder = user("auto-flow@test.com", "BIDDER");
         Auction auction = auction(seller);
 
-        depositService.holdDeposit(auction.getId(), manualBidder.getId(), new BigDecimal("10.00"));
-        depositService.holdDeposit(auction.getId(), autoBidder.getId(), new BigDecimal("10.00"));
         autoBidService.upsertConfig(auction.getId(), autoBidder.getEmail(), new BigDecimal("150.00"));
 
         LocalDateTime originalEndTime = auction.getEndTime();

@@ -3,8 +3,8 @@ package com.example.daugia.common.event;
 import java.math.BigDecimal;
 
 public class AuctionEndedEvent extends DomainEvent {
-    private final Long auctionId;
-    private final Long winnerId;
+    private final String auctionId;
+    private final String winnerId;
     private final BigDecimal winningAmount;
     private final String productName;
     private final String sellerEmail;
@@ -12,8 +12,8 @@ public class AuctionEndedEvent extends DomainEvent {
     private final String winnerEmail;
     private final String winnerName;
 
-    public AuctionEndedEvent(Long auctionId,
-                            Long winnerId,
+    public AuctionEndedEvent(String auctionId,
+                            String winnerId,
                             BigDecimal winningAmount,
                             String productName,
                             String sellerEmail,
@@ -30,8 +30,8 @@ public class AuctionEndedEvent extends DomainEvent {
         this.winnerName = winnerName;
     }
 
-    public Long getAuctionId() { return auctionId; }
-    public Long getWinnerId() { return winnerId; }
+    public String getAuctionId() { return auctionId; }
+    public String getWinnerId() { return winnerId; }
     public BigDecimal getWinningAmount() { return winningAmount; }
     public String getProductName() { return productName; }
     public String getSellerEmail() { return sellerEmail; }
@@ -40,5 +40,5 @@ public class AuctionEndedEvent extends DomainEvent {
     public String getWinnerName() { return winnerName; }
 
     @Override public String getAggregateType() { return "AUCTION"; }
-    @Override public String getAggregateId() { return String.valueOf(auctionId); }
+    @Override public String getAggregateId() { return auctionId; }
 }

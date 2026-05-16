@@ -28,7 +28,7 @@ public class AdminAuctionController {
             @RequestParam(defaultValue = "0")     int page,
             @RequestParam(defaultValue = "12")    int size,
             @RequestParam(required = false)       String search,
-            @RequestParam(required = false)       Long categoryId,
+            @RequestParam(required = false)       String categoryId,
             @RequestParam(required = false)       AuctionStatus status,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc")  String sortDir) {
@@ -44,7 +44,7 @@ public class AdminAuctionController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AuctionResponse>> getById(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Auction fetched",
                 auctionService.getById(id, jwt.getSubject(), true)));
@@ -52,7 +52,7 @@ public class AdminAuctionController {
 
     @PutMapping("/{id}/review")
     public ResponseEntity<ApiResponse<AuctionResponse>> review(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody @Valid AuctionReviewRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Auction reviewed",

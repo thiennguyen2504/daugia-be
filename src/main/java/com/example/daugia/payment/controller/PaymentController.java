@@ -31,7 +31,7 @@ public class PaymentController {
     @PostMapping("/auction/{auctionId}/create")
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Create VNPAY payment URL for auction winner")
-    public ResponseEntity<ApiResponse<PaymentResponse>> createPayment(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<PaymentResponse>> createPayment(@PathVariable String auctionId,
                                                                       @AuthenticationPrincipal Jwt jwt,
                                                                       HttpServletRequest request) {
         String paymentUrl = paymentService.createPaymentUrl(auctionId, jwt.getSubject(), request);
@@ -52,7 +52,7 @@ public class PaymentController {
     @GetMapping("/auction/{auctionId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get payment details by auction")
-    public ResponseEntity<ApiResponse<PaymentResponse>> getByAuction(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<PaymentResponse>> getByAuction(@PathVariable String auctionId,
                                                                      @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Payment fetched",
                 paymentService.getByAuction(auctionId, jwt.getSubject())));

@@ -1,7 +1,6 @@
 package com.example.daugia.common.event;
 
 import com.example.daugia.auth.service.EmailService;
-import com.example.daugia.deposit.service.DepositService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -16,7 +15,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class DomainEventListener {
 
     private final EmailService emailService;
-    private final DepositService depositService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCategoryCreated(CategoryCreatedEvent event) {
@@ -61,22 +59,6 @@ public class DomainEventListener {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onDepositHeld(DepositHeldEvent event) {
-        log.info("[EVENT] DepositHeld — auction={}, bidder={}, amount={}",
-                event.getAuctionId(), event.getBidderId(), event.getAmount());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onDepositReleased(DepositReleasedEvent event) {
-        log.info("[EVENT] DepositReleased — auction={}, bidder={}", event.getAuctionId(), event.getBidderId());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onDepositForfeited(DepositForfeitedEvent event) {
-        log.info("[EVENT] DepositForfeited — auction={}, bidder={}", event.getAuctionId(), event.getBidderId());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBidPlaced(BidPlacedEvent event) {
         log.info("[EVENT] BidPlaced — auction={}, bid={}, bidder={}, amount={}",
                 event.getAuctionId(), event.getBidId(), event.getBidderId(), event.getAmount());
@@ -84,8 +66,6 @@ public class DomainEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAuctionEnded(AuctionEndedEvent event) {
-        depositService.releaseAllNonWinners(event.getAuctionId(), event.getWinnerId());
-
         if (event.getWinnerEmail() != null && event.getWinnerName() != null) {
             emailService.sendAuctionWinnerEmail(event.getWinnerEmail(), event.getWinnerName(), event.getProductName());
         }

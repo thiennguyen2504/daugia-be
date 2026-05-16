@@ -31,7 +31,7 @@ public class AdminUserController {
 
     @PutMapping("/{id}/lock")
     public ResponseEntity<ApiResponse<Void>> lockUser(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody @Valid UserAccountActionRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         userService.lockUser(id, jwt.getSubject(), request.getReason());
@@ -40,7 +40,7 @@ public class AdminUserController {
 
     @PutMapping("/{id}/unlock")
     public ResponseEntity<ApiResponse<Void>> unlockUser(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody @Valid UserAccountActionRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         userService.unlockUser(id, jwt.getSubject(), request.getReason());
@@ -49,7 +49,7 @@ public class AdminUserController {
 
     @GetMapping("/{id}/account-logs")
     public ResponseEntity<ApiResponse<PageResponse<UserAccountLogDto>>> getAccountLogs(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success("Account logs fetched", userService.getAccountLogs(id, page, size)));

@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.time.LocalDateTime;
 
-public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
+public interface AuditLogRepository extends JpaRepository<AuditLog, String>, JpaSpecificationExecutor<AuditLog> {
     Page<AuditLog> findAllByActorOrderByCreatedAtDesc(String actor, Pageable pageable);
 
     Page<AuditLog> findAllByActionAndCreatedAtBetween(AuditAction action, LocalDateTime from, LocalDateTime to, Pageable pageable);

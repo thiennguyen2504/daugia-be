@@ -15,11 +15,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface AuctionRepository extends JpaRepository<Auction, Long>, JpaSpecificationExecutor<Auction> {
+public interface AuctionRepository extends JpaRepository<Auction, String>, JpaSpecificationExecutor<Auction> {
 
     Page<Auction> findAllByStatusIn(List<AuctionStatus> statuses, Pageable pageable);
 
-    Page<Auction> findAllBySeller_Id(Long sellerId, Pageable pageable);
+    Page<Auction> findAllBySeller_Id(String sellerId, Pageable pageable);
 
     @Query("SELECT a FROM Auction a WHERE a.status = 'APPROVED' AND a.biddingStartTime <= :now")
     List<Auction> findApprovedReadyToActivate(@Param("now") LocalDateTime now);
@@ -29,8 +29,8 @@ public interface AuctionRepository extends JpaRepository<Auction, Long>, JpaSpec
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Auction a WHERE a.id = :id")
-    Optional<Auction> findByIdWithLock(@Param("id") Long id);
+    Optional<Auction> findByIdWithLock(@Param("id") String id);
 
     @Query("SELECT DISTINCT a FROM Auction a LEFT JOIN FETCH a.images WHERE a.id IN :ids")
-    List<Auction> findAllWithImagesByIds(@Param("ids") List<Long> ids);
+    List<Auction> findAllWithImagesByIds(@Param("ids") List<String> ids);
 }

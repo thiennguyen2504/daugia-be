@@ -7,8 +7,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -22,6 +20,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -31,13 +30,13 @@ import java.time.LocalDateTime;
 @Table(name = "payments", indexes = {
         @Index(name = "idx_payment_auction", columnList = "auction_id"),
         @Index(name = "idx_payment_payer", columnList = "payer_id"),
-        @Index(name = "idx_payment_vnpay_ref", columnList = "vnpay_txn_ref", unique = true)
+        @Index(name = "idx_payment_txn_ref", columnList = "vnpay_txn_ref")
 })
 public class Payment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "auction_id", nullable = false)
@@ -50,26 +49,28 @@ public class Payment {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(name = "vnpay_txn_ref", nullable = false, length = 64, unique = true)
+    @Column(unique = true, length = 36)
     private String vnpayTxnRef;
 
-    @Column(name = "vnpay_transaction_no", length = 64)
+    @Column(length = 20)
     private String vnpayTransactionNo;
 
-    @Column(name = "vnpay_response_code", length = 10)
+    @Column(length = 10)
     private String vnpayResponseCode;
-
-    private LocalDateTime createdAt;
 
     private LocalDateTime paidAt;
 
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
     @PrePersist
-    protected void onCreate() {
+    protected void prePersist() {
+        if (this.id == null) this.id = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
     }
 }

@@ -1,12 +1,9 @@
 package com.example.daugia.bidding.entity;
 
-import com.example.daugia.common.audit.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
@@ -18,49 +15,48 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@lombok.EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "bid_history", indexes = {
-        @Index(name = "idx_bh_auction_time", columnList = "auction_id,bid_time"),
-        @Index(name = "idx_bh_auction_step", columnList = "auction_id,step_number")
+@Table(name = "bid_history_entries", indexes = {
+        @Index(name = "idx_bhe_auction", columnList = "auction_id"),
+        @Index(name = "idx_bhe_bid_time", columnList = "bid_time")
 })
-public class BidHistoryEntry extends AuditableEntity {
+public class BidHistoryEntry {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
-    @Column(name = "auction_id", nullable = false)
-    private Long auctionId;
+    @Column(name = "auction_id", nullable = false, length = 36)
+    private String auctionId;
 
-    @Column(name = "bidder_email_masked", nullable = false, length = 255)
+    @Column(nullable = false, length = 255)
     private String bidderEmailMasked;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
-    @Column(name = "bid_increment_applied", nullable = false, precision = 19, scale = 2)
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal bidIncrementApplied;
 
-    @Column(name = "step_number", nullable = false)
+    @Column(nullable = false)
     private Integer stepNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "bid_type", nullable = false, length = 20)
+    @Column(nullable = false, length = 20)
     private BidType bidType;
 
-    @Column(name = "bid_time", nullable = false, updatable = false)
+    @Column(name = "bid_time", updatable = false)
     private LocalDateTime bidTime;
 
     @PrePersist
-    void prePersist() {
-        if (this.bidTime == null) {
-            this.bidTime = LocalDateTime.now();
-        }
+    protected void prePersist() {
+        if (this.id == null) this.id = UUID.randomUUID().toString();
+        this.bidTime = LocalDateTime.now();
     }
 }

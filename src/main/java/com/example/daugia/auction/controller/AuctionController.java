@@ -37,7 +37,7 @@ public class AuctionController {
             @RequestParam(defaultValue = "0")     int page,
             @RequestParam(defaultValue = "12")    int size,
             @RequestParam(required = false)       String search,
-            @RequestParam(required = false)       Long categoryId,
+            @RequestParam(required = false)       String categoryId,
             @RequestParam(required = false)       BigDecimal minPrice,
             @RequestParam(required = false)       BigDecimal maxPrice,
             @RequestParam(required = false)       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startFrom,
@@ -58,7 +58,7 @@ public class AuctionController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AuctionResponse>> getById(
-            @PathVariable Long id,
+            @PathVariable String id,
             @AuthenticationPrincipal Jwt jwt) {
         String email = (jwt != null) ? jwt.getSubject() : null;
         return ResponseEntity.ok(ApiResponse.success("Auction fetched",

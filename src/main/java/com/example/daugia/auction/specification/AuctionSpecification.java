@@ -24,7 +24,7 @@ public final class AuctionSpecification {
                 : cb.like(cb.lower(root.get("productName")), "%" + search.toLowerCase() + "%");
     }
 
-    public static Specification<Auction> withCategory(Long categoryId) {
+    public static Specification<Auction> withCategory(String categoryId) {
         return (root, query, cb) -> categoryId == null
                 ? cb.conjunction()
                 : cb.equal(root.get("category").get("id"), categoryId);

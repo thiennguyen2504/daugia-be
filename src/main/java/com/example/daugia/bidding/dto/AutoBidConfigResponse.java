@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class AutoBidConfigResponse {
-    private Long auctionId;
+    private String auctionId;
     private BigDecimal maxAmount;
     private boolean active;
     private LocalDateTime createdAt;

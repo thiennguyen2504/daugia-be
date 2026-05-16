@@ -6,8 +6,8 @@ import com.example.daugia.common.dto.PageResponse;
 
 public interface CategoryService {
     CategoryResponse create(CategoryRequest request, String createdByEmail);
-    CategoryResponse update(Long id, CategoryRequest request);
-    void delete(Long id);
-    CategoryResponse getById(Long id);
+    CategoryResponse update(String id, CategoryRequest request);
+    void delete(String id);
+    CategoryResponse getById(String id);
     PageResponse<CategoryResponse> getAll(int page, int size, String search);
 }

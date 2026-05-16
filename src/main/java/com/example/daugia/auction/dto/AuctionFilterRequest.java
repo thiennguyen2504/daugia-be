@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class AuctionFilterRequest {
     private String search;
-    private Long categoryId;
+    private String categoryId;
     private AuctionStatus status;
     private LocalDateTime startFrom;
     private LocalDateTime startTo;

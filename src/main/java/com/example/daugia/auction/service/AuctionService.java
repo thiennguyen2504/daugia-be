@@ -16,10 +16,10 @@ public interface AuctionService {
 
     // Public / Bidder
     PageResponse<AuctionSummaryResponse> searchPublic(AuctionFilterRequest filter, int page, int size);
-    AuctionResponse getById(Long id, String currentUserEmail, boolean isAdmin);
+    AuctionResponse getById(String id, String currentUserEmail, boolean isAdmin);
 
     // Admin
     PageResponse<AuctionSummaryResponse> searchAdmin(AuctionFilterRequest filter, int page, int size);
-    AuctionResponse review(Long id, AuctionReviewRequest request, String adminEmail);
+    AuctionResponse review(String id, AuctionReviewRequest request, String adminEmail);
 
 }

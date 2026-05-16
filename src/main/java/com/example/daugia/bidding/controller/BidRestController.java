@@ -37,7 +37,7 @@ public class BidRestController {
     @PostMapping("/bids")
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Place a bid through REST")
-    public ResponseEntity<ApiResponse<BidResponse>> placeBid(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<BidResponse>> placeBid(@PathVariable String auctionId,
                                                              @RequestBody @Valid PlaceBidRequest request,
                                                              @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Bid processed",
@@ -46,7 +46,7 @@ public class BidRestController {
 
     @GetMapping("/bids")
     @Operation(summary = "Get public bid history")
-    public ResponseEntity<ApiResponse<PageResponse<BidResponse>>> history(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<PageResponse<BidResponse>>> history(@PathVariable String auctionId,
                                                                           @RequestParam(defaultValue = "0") int page,
                                                                           @RequestParam(defaultValue = "20") int size) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "bidTime"));
@@ -57,7 +57,7 @@ public class BidRestController {
         @GetMapping("/history")
         @Operation(summary = "Get immutable bid history")
         public ResponseEntity<ApiResponse<PageResponse<BidHistoryEntryResponse>>> immutableHistory(
-            @PathVariable Long auctionId,
+            @PathVariable String auctionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(ApiResponse.success("Bid history fetched",
@@ -66,7 +66,7 @@ public class BidRestController {
 
     @GetMapping("/leaderboard")
     @Operation(summary = "Get public leaderboard")
-    public ResponseEntity<ApiResponse<List<LeaderboardEntryResponse>>> leaderboard(@PathVariable Long auctionId) {
+    public ResponseEntity<ApiResponse<List<LeaderboardEntryResponse>>> leaderboard(@PathVariable String auctionId) {
         return ResponseEntity.ok(ApiResponse.success("Leaderboard fetched", leaderboardService.getTop(auctionId)));
     }
 }

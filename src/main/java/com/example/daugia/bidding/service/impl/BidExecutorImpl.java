@@ -51,7 +51,7 @@ public class BidExecutorImpl implements BidExecutor {
 
     @Override
     @Transactional
-    public BidResponse execute(Long auctionId, String bidderEmail, BigDecimal amount, BidType bidType) {
+    public BidResponse execute(String auctionId, String bidderEmail, BigDecimal amount, BidType bidType) {
         Auction auction = auctionRepository.findByIdWithLock(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         User bidder = userRepository.findByEmail(bidderEmail)
@@ -66,7 +66,7 @@ public class BidExecutorImpl implements BidExecutor {
 
         var rejection = bidValidator.validate(auction, bidder, amount);
         if (rejection.isPresent()) {
-            auditService.log(bidderEmail, AuditAction.BID_REJECTED, "AUCTION", String.valueOf(auctionId),
+            auditService.log(bidderEmail, AuditAction.BID_REJECTED, "AUCTION", auctionId,
                 AuditOutcome.FAILURE,
                 AuditJsonUtils.toJson("auctionId", auctionId, "amount", amount, "rejectionReason", rejection.get().getRejectionReason()));
             return rejection.get();
@@ -98,7 +98,7 @@ public class BidExecutorImpl implements BidExecutor {
         }
 
         eventPublisher.publish(new BidPlacedEvent(auctionId, bid.getId(), bidder.getId(), amount));
-        auditService.log(bidderEmail, AuditAction.BID_PLACED, "BID", String.valueOf(bid.getId()),
+        auditService.log(bidderEmail, AuditAction.BID_PLACED, "BID", bid.getId(),
             AuditOutcome.SUCCESS,
             AuditJsonUtils.toJson("auctionId", auctionId, "amount", amount));
         BidResponse response = toAcceptedResponse(auction, bid, bidder.getEmail());

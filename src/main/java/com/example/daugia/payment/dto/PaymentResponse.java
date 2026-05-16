@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentResponse {
-    private Long auctionId;
+    private String auctionId;
     private String payerEmail;
     private BigDecimal amount;
     private PaymentStatus status;

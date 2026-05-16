@@ -1,44 +1,46 @@
 package com.example.daugia.auction.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "auction_images", indexes = {
-        @Index(name = "idx_auction_image_auction", columnList = "auction_id"),
-        @Index(name = "idx_auction_image_order",   columnList = "auction_id,sort_order")
-})
+@Table(name = "auction_images")
 public class AuctionImage {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "auction_id", nullable = false)
     private Auction auction;
 
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false, length = 512)
     private String imageUrl;
 
-    @Column(nullable = false, length = 500)
+    @Column(length = 512)
     private String publicId;
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Integer sortOrder = 0;
-
-    @Column(updatable = false)
-    private LocalDateTime uploadedAt;
+    private int sortOrder;
 
     @PrePersist
-    protected void onCreate() {
-        this.uploadedAt = LocalDateTime.now();
+    protected void prePersist() {
+        if (this.id == null) this.id = UUID.randomUUID().toString();
     }
 }

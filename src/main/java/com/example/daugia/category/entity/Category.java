@@ -1,45 +1,47 @@
 package com.example.daugia.category.entity;
 
-import com.example.daugia.common.audit.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
 @Entity
-@Table(name = "categories", indexes = {
-        @Index(name = "idx_category_name", columnList = "name"),
-        @Index(name = "idx_category_deleted", columnList = "deleted")
-})
-public class Category extends AuditableEntity {
+@Table(name = "categories")
+public class Category {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(unique = true, nullable = false)
     private String name;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
     @Builder.Default
     private boolean deleted = false;
 
-    @Column(length = 255)
-    private String createdBy;  // email of admin who created it
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    private String createdBy;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null) this.id = UUID.randomUUID().toString();
+        this.createdAt = LocalDateTime.now();
+    }
 }

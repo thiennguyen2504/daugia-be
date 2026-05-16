@@ -20,7 +20,7 @@ public class BidController {
 
     @MessageMapping("/auctions/{auctionId}/bid")
     @SendTo("/topic/auctions/{auctionId}")
-    public BidResponse placeBid(@DestinationVariable Long auctionId,
+    public BidResponse placeBid(@DestinationVariable String auctionId,
                                 PlaceBidRequest request,
                                 Principal principal) {
         return biddingService.placeBid(auctionId, principal.getName(), request.getAmount(), BidType.MANUAL);

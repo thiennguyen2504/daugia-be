@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuctionResponse {
-    private Long id;
+    private String id;
     private String productName;
     private String description;
     private BigDecimal startingPrice;
@@ -25,11 +25,11 @@ public class AuctionResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     // Seller info (flattened)
-    private Long sellerId;
+    private String sellerId;
     private String sellerEmail;
     private String sellerName;
     // Category info
-    private Long categoryId;
+    private String categoryId;
     private String categoryName;
     // Images
     private List<AuctionImageResponse> images;

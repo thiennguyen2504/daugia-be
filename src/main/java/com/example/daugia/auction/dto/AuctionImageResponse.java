@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuctionImageResponse {
-    private Long id;
+    private String id;
     private String imageUrl;
     private Integer sortOrder;
     private LocalDateTime uploadedAt;

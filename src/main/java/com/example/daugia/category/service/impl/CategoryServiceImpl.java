@@ -52,7 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @CacheEvict(value = "categories", key = "#id")
-    public CategoryResponse update(Long id, CategoryRequest request) {
+    public CategoryResponse update(String id, CategoryRequest request) {
         Category category = categoryRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
 
@@ -72,7 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @CacheEvict(value = "categories", key = "#id")
-    public void delete(Long id) {
+    public void delete(String id) {
         Category category = categoryRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
 
@@ -85,7 +85,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "categories", key = "#id")
-    public CategoryResponse getById(Long id) {
+    public CategoryResponse getById(String id) {
         return categoryRepository.findByIdAndDeletedFalse(id)
                 .map(categoryMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));

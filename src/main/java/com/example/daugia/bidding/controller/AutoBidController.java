@@ -25,7 +25,7 @@ public class AutoBidController {
     @PostMapping
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Create auto-bid config")
-    public ResponseEntity<ApiResponse<AutoBidConfigResponse>> create(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<AutoBidConfigResponse>> create(@PathVariable String auctionId,
                                                                      @RequestBody @Valid AutoBidConfigRequest request,
                                                                      @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Auto-bid configured",
@@ -35,7 +35,7 @@ public class AutoBidController {
     @PutMapping
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Update auto-bid config")
-    public ResponseEntity<ApiResponse<AutoBidConfigResponse>> update(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<AutoBidConfigResponse>> update(@PathVariable String auctionId,
                                                                      @RequestBody @Valid AutoBidConfigRequest request,
                                                                      @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Auto-bid updated",
@@ -45,7 +45,7 @@ public class AutoBidController {
     @DeleteMapping
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Deactivate auto-bid config")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String auctionId,
                                                     @AuthenticationPrincipal Jwt jwt) {
         autoBidService.deactivateConfig(auctionId, jwt.getSubject());
         return ResponseEntity.ok(ApiResponse.success("Auto-bid deactivated", null));
@@ -54,7 +54,7 @@ public class AutoBidController {
     @GetMapping
     @PreAuthorize("hasRole('BIDDER')")
     @Operation(summary = "Get own auto-bid config")
-    public ResponseEntity<ApiResponse<AutoBidConfigResponse>> own(@PathVariable Long auctionId,
+    public ResponseEntity<ApiResponse<AutoBidConfigResponse>> own(@PathVariable String auctionId,
                                                                   @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Auto-bid fetched",
                 autoBidService.getOwnConfig(auctionId, jwt.getSubject())));

@@ -8,8 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface BidRepository extends JpaRepository<Bid, Long> {
-    Optional<Bid> findTopByAuctionIdAndStatusOrderByAmountDesc(Long auctionId, BidStatus status);
+public interface BidRepository extends JpaRepository<Bid, String> {
+    Optional<Bid> findTopByAuctionIdAndStatusOrderByAmountDesc(String auctionId, BidStatus status);
 
-    Page<Bid> findAllByAuctionIdOrderByBidTimeDesc(Long auctionId, Pageable pageable);
+    Page<Bid> findAllByAuctionIdOrderByBidTimeDesc(String auctionId, Pageable pageable);
 }

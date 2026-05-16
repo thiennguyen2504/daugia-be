@@ -52,7 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public String createPaymentUrl(Long auctionId, String winnerEmail, HttpServletRequest request) {
+    public String createPaymentUrl(String auctionId, String winnerEmail, HttpServletRequest request) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         if (auction.getStatus() != AuctionStatus.ENDED) {
@@ -158,7 +158,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentResponse getByAuction(Long auctionId, String userEmail) {
+    public PaymentResponse getByAuction(String auctionId, String userEmail) {
         Payment payment = paymentRepository.findFirstByAuctionIdOrderByCreatedAtDesc(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
         if (payment.getPayer() == null || payment.getPayer().getEmail() == null

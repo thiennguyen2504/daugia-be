@@ -9,11 +9,11 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface BidHistoryRepository extends JpaRepository<BidHistoryEntry, Long> {
-    Page<BidHistoryEntry> findAllByAuctionIdOrderByBidTimeDesc(Long auctionId, Pageable pageable);
-    int countByAuctionId(Long auctionId);
+public interface BidHistoryRepository extends JpaRepository<BidHistoryEntry, String> {
+    Page<BidHistoryEntry> findAllByAuctionIdOrderByBidTimeDesc(String auctionId, Pageable pageable);
+    int countByAuctionId(String auctionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT COUNT(b) FROM BidHistoryEntry b WHERE b.auctionId = :auctionId")
-    int countByAuctionIdWithLock(@Param("auctionId") Long auctionId);
+    int countByAuctionIdWithLock(@Param("auctionId") String auctionId);
 }

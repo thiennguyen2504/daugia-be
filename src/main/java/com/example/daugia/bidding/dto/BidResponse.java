@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BidResponse {
-    private Long auctionId;
-    private Long bidId;
+    private String auctionId;
+    private String bidId;
     private BigDecimal amount;
     private BigDecimal currentPrice;
     private String winnerEmail;

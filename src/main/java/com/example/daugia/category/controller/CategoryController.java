@@ -33,7 +33,7 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CategoryResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<CategoryResponse>> getById(@PathVariable String id) {
         return ResponseEntity.ok(ApiResponse.success("Category fetched",
                 categoryService.getById(id)));
     }
@@ -51,7 +51,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CategoryResponse>> update(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody @Valid CategoryRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Category updated",
                 categoryService.update(id, request)));
@@ -59,7 +59,7 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> delete(@PathVariable String id) {
         categoryService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Category deleted", null));
     }

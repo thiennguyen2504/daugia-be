@@ -24,7 +24,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private final StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public void updateLeaderboard(Long auctionId, String bidderEmail, BigDecimal amount, LocalDateTime endTime) {
+    public void updateLeaderboard(String auctionId, String bidderEmail, BigDecimal amount, LocalDateTime endTime) {
         try {
             String key = key(auctionId);
             stringRedisTemplate.opsForZSet().add(key, bidderEmail, amount.doubleValue());
@@ -37,7 +37,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     }
 
     @Override
-    public List<LeaderboardEntryResponse> getTop(Long auctionId) {
+    public List<LeaderboardEntryResponse> getTop(String auctionId) {
         try {
             var tuples = stringRedisTemplate.opsForZSet().reverseRangeWithScores(key(auctionId), 0, 9);
             if (tuples == null) {
@@ -59,7 +59,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                 .build();
     }
 
-    private String key(Long auctionId) {
+    private String key(String auctionId) {
         return "auction:leaderboard:" + auctionId;
     }
 }

@@ -7,7 +7,7 @@ import com.example.daugia.common.dto.PageResponse;
 import java.math.BigDecimal;
 
 public interface BidHistoryService {
-    void record(Long auctionId, String bidderEmail, BigDecimal amount, BigDecimal increment, BidType bidType);
+    void record(String auctionId, String bidderEmail, BigDecimal amount, BigDecimal increment, BidType bidType);
 
-    PageResponse<BidHistoryEntryResponse> getHistory(Long auctionId, int page, int size);
+    PageResponse<BidHistoryEntryResponse> getHistory(String auctionId, int page, int size);
 }

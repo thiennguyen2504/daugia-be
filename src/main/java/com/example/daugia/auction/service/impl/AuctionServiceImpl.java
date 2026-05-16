@@ -124,7 +124,7 @@ public class AuctionServiceImpl implements AuctionService {
 
         eventPublisher.publish(new AuctionCreatedEvent(
                 saved.getId(), saved.getProductName(), seller.getEmail()));
-        auditService.log(sellerEmail, AuditAction.AUCTION_CREATED, "AUCTION", String.valueOf(saved.getId()),
+        auditService.log(sellerEmail, AuditAction.AUCTION_CREATED, "AUCTION", saved.getId(),
             AuditOutcome.SUCCESS,
             AuditJsonUtils.toJson("productName", saved.getProductName(), "seller", seller.getEmail()));
 
@@ -155,7 +155,7 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "auctions", key = "#id + '-' + #isAdmin")
-    public AuctionResponse getById(Long id, String currentUserEmail, boolean isAdmin) {
+    public AuctionResponse getById(String id, String currentUserEmail, boolean isAdmin) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
 
@@ -195,7 +195,7 @@ public class AuctionServiceImpl implements AuctionService {
         @CacheEvict(value = "auctions", key = "#id + '-false'"),
         @CacheEvict(value = "auctions", key = "#id + '-true'")
     })
-    public AuctionResponse review(Long id, AuctionReviewRequest request, String adminEmail) {
+    public AuctionResponse review(String id, AuctionReviewRequest request, String adminEmail) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
 
@@ -219,7 +219,7 @@ public class AuctionServiceImpl implements AuctionService {
                     saved.getSeller().getEmail(),
                     saved.getSeller().getFullName(),
                     reason));
-                auditService.log(adminEmail, AuditAction.AUCTION_REVIEWED_REJECTED, "AUCTION", String.valueOf(saved.getId()),
+                auditService.log(adminEmail, AuditAction.AUCTION_REVIEWED_REJECTED, "AUCTION", saved.getId(),
                     AuditOutcome.SUCCESS,
                     AuditJsonUtils.toJson("productName", saved.getProductName(), "reviewer", adminEmail, "reason", reason));
 
@@ -240,7 +240,7 @@ public class AuctionServiceImpl implements AuctionService {
                     saved.getSeller().getEmail(),
                     saved.getSeller().getFullName(),
                     saved.getBiddingStartTime()));
-        auditService.log(adminEmail, AuditAction.AUCTION_REVIEWED_APPROVED, "AUCTION", String.valueOf(saved.getId()),
+        auditService.log(adminEmail, AuditAction.AUCTION_REVIEWED_APPROVED, "AUCTION", saved.getId(),
             AuditOutcome.SUCCESS,
             AuditJsonUtils.toJson("productName", saved.getProductName(), "reviewer", adminEmail));
 
@@ -281,7 +281,7 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     private PageResponse<AuctionSummaryResponse> toSummaryPage(Page<Auction> page) {
-        List<Long> ids = page.getContent().stream()
+        List<String> ids = page.getContent().stream()
                 .map(Auction::getId)
                 .toList();
         if (ids.isEmpty()) {
@@ -295,7 +295,7 @@ public class AuctionServiceImpl implements AuctionService {
                     .build();
         }
 
-        Map<Long, Auction> auctionById = auctionRepository.findAllWithImagesByIds(ids).stream()
+        Map<String, Auction> auctionById = auctionRepository.findAllWithImagesByIds(ids).stream()
                 .collect(Collectors.toMap(Auction::getId, Function.identity()));
         List<AuctionSummaryResponse> content = page.getContent().stream()
                 .map(auction -> auctionById.getOrDefault(auction.getId(), auction))

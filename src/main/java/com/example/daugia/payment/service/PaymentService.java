@@ -6,7 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 public interface PaymentService {
-    String createPaymentUrl(Long auctionId, String winnerEmail, HttpServletRequest request);
+    String createPaymentUrl(String auctionId, String winnerEmail, HttpServletRequest request);
     PaymentResponse handleCallback(Map<String, String> params);
-    PaymentResponse getByAuction(Long auctionId, String userEmail);
+    PaymentResponse getByAuction(String auctionId, String userEmail);
 }

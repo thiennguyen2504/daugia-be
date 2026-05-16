@@ -7,6 +7,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface LeaderboardService {
-    void updateLeaderboard(Long auctionId, String bidderEmail, BigDecimal amount, LocalDateTime endTime);
-    List<LeaderboardEntryResponse> getTop(Long auctionId);
+    void updateLeaderboard(String auctionId, String bidderEmail, BigDecimal amount, LocalDateTime endTime);
+    List<LeaderboardEntryResponse> getTop(String auctionId);
 }

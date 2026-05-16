@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 
 public interface BiddingService {
-    BidResponse placeBid(Long auctionId, String bidderEmail, BigDecimal amount, BidType bidType);
-    Page<BidResponse> getBidHistory(Long auctionId, Pageable pageable);
-    BidResponse getCurrentLeader(Long auctionId);
+    BidResponse placeBid(String auctionId, String bidderEmail, BigDecimal amount, BidType bidType);
+    Page<BidResponse> getBidHistory(String auctionId, Pageable pageable);
+    BidResponse getCurrentLeader(String auctionId);
 }

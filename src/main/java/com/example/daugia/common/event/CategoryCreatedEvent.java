@@ -2,15 +2,15 @@ package com.example.daugia.common.event;
 
 public class CategoryCreatedEvent extends DomainEvent {
 
-    private final Long categoryId;
+    private final String categoryId;
     private final String categoryName;
 
-    public CategoryCreatedEvent(Long categoryId, String categoryName) {
+    public CategoryCreatedEvent(String categoryId, String categoryName) {
         this.categoryId = categoryId;
         this.categoryName = categoryName;
     }
 
-    public Long getCategoryId() {
+    public String getCategoryId() {
         return categoryId;
     }
 
@@ -25,6 +25,6 @@ public class CategoryCreatedEvent extends DomainEvent {
 
     @Override
     public String getAggregateId() {
-        return String.valueOf(categoryId);
+        return categoryId;
     }
 }

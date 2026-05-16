@@ -43,14 +43,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto findUserById(Long id) {
+    public UserDto findUserById(String id) {
         return repository.findById(id)
                 .map(userMapper::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     @Override
-    public Long resolveUserId(String email) {
+    public String resolveUserId(String email) {
         return repository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email))
                 .getId();
@@ -58,7 +58,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void lockUser(Long targetUserId, String adminEmail, String reason) {
+    public void lockUser(String targetUserId, String adminEmail, String reason) {
         var user = repository.findById(targetUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -74,14 +74,14 @@ public class UserServiceImpl implements UserService {
                 .action(UserAccountAction.LOCK)
                 .reason(reason)
                 .build());
-            auditService.log(adminEmail, AuditAction.USER_LOCKED, "USER", String.valueOf(targetUserId),
+        auditService.log(adminEmail, AuditAction.USER_LOCKED, "USER", targetUserId,
                 AuditOutcome.SUCCESS,
                 AuditJsonUtils.toJson("reason", reason, "lockedBy", adminEmail));
     }
 
     @Override
     @Transactional
-    public void unlockUser(Long targetUserId, String adminEmail, String reason) {
+    public void unlockUser(String targetUserId, String adminEmail, String reason) {
         var user = repository.findById(targetUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -97,14 +97,14 @@ public class UserServiceImpl implements UserService {
                 .action(UserAccountAction.UNLOCK)
                 .reason(reason)
                 .build());
-            auditService.log(adminEmail, AuditAction.USER_UNLOCKED, "USER", String.valueOf(targetUserId),
+        auditService.log(adminEmail, AuditAction.USER_UNLOCKED, "USER", targetUserId,
                 AuditOutcome.SUCCESS,
                 AuditJsonUtils.toJson("reason", reason, "unlockedBy", adminEmail));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<UserAccountLogDto> getAccountLogs(Long userId, int page, int size) {
+    public PageResponse<UserAccountLogDto> getAccountLogs(String userId, int page, int size) {
         var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return PageResponse.from(userAccountLogRepository.findAllByTargetUser_Id(userId, pageable)
                 .map(log -> UserAccountLogDto.builder()
@@ -135,7 +135,6 @@ public class UserServiceImpl implements UserService {
         }
 
         if (avatar != null && !avatar.isEmpty()) {
-            // Delete old avatar if exists
             if (user.getAvatarPublicId() != null) {
                 storageService.delete(user.getAvatarPublicId());
             }
@@ -146,6 +145,5 @@ public class UserServiceImpl implements UserService {
         }
 
         return userMapper.toDto(repository.save(user));
-        
     }
 }

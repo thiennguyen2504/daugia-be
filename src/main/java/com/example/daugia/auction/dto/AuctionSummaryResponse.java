@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuctionSummaryResponse {
-    private Long id;
+    private String id;
     private String productName;
     private BigDecimal startingPrice;
     private BigDecimal buyNowPrice;

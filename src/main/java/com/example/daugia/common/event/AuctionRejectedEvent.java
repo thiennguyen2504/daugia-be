@@ -2,13 +2,13 @@ package com.example.daugia.common.event;
 
 public class AuctionRejectedEvent extends DomainEvent {
 
-    private final Long auctionId;
+    private final String auctionId;
     private final String productName;
     private final String sellerEmail;
     private final String sellerName;
     private final String rejectionReason;
 
-    public AuctionRejectedEvent(Long auctionId, String productName,
+    public AuctionRejectedEvent(String auctionId, String productName,
                                 String sellerEmail, String sellerName,
                                 String rejectionReason) {
         this.auctionId       = auctionId;
@@ -18,12 +18,12 @@ public class AuctionRejectedEvent extends DomainEvent {
         this.rejectionReason = rejectionReason;
     }
 
-    public Long getAuctionId()       { return auctionId; }
+    public String getAuctionId()       { return auctionId; }
     public String getProductName()   { return productName; }
     public String getSellerEmail()   { return sellerEmail; }
     public String getSellerName()    { return sellerName; }
     public String getRejectionReason() { return rejectionReason; }
 
     @Override public String getAggregateType() { return "AUCTION"; }
-    @Override public String getAggregateId()   { return String.valueOf(auctionId); }
+    @Override public String getAggregateId()   { return auctionId; }
 }

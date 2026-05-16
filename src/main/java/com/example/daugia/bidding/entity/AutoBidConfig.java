@@ -2,11 +2,24 @@ package com.example.daugia.bidding.entity;
 
 import com.example.daugia.auction.entity.Auction;
 import com.example.daugia.user.entity.User;
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -14,16 +27,16 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "auto_bid_configs",
-        uniqueConstraints = @UniqueConstraint(name = "uk_auto_bid_auction_bidder", columnNames = {"auction_id", "bidder_id"}),
+        uniqueConstraints = @UniqueConstraint(name = "uk_autobid_auction_bidder", columnNames = {"auction_id", "bidder_id"}),
         indexes = {
-                @Index(name = "idx_auto_bid_auction_active", columnList = "auction_id,is_active"),
-                @Index(name = "idx_auto_bid_max", columnList = "auction_id,max_amount")
+                @Index(name = "idx_autobid_auction", columnList = "auction_id"),
+                @Index(name = "idx_autobid_bidder", columnList = "bidder_id")
         })
 public class AutoBidConfig {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "auction_id", nullable = false)
@@ -37,21 +50,17 @@ public class AutoBidConfig {
     private BigDecimal maxAmount;
 
     @Builder.Default
-    @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    @Column(updatable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
+    protected void prePersist() {
+        if (this.id == null) this.id = UUID.randomUUID().toString();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }

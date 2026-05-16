@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserAccountLogDto {
-    private Long id;
-    private Long targetUserId;
+    private String id;
+    private String targetUserId;
     private String targetUserEmail;
     private String performedBy;
     private UserAccountAction action;

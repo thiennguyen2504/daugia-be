@@ -37,7 +37,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable String id) {
         return ResponseEntity.ok(ApiResponse.success("Fetched user successfully", userService.findUserById(id)));
     }
 

@@ -32,7 +32,7 @@ public class BiddingServiceImpl implements BiddingService {
 
     @Override
     @Transactional
-    public BidResponse placeBid(Long auctionId, String bidderEmail, BigDecimal amount, BidType bidType) {
+    public BidResponse placeBid(String auctionId, String bidderEmail, BigDecimal amount, BidType bidType) {
         User bidder = userRepository.findByEmail(bidderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Bidder not found"));
         BidResponse response = bidExecutor.execute(auctionId, bidderEmail, amount, bidType);
@@ -44,7 +44,7 @@ public class BiddingServiceImpl implements BiddingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<BidResponse> getBidHistory(Long auctionId, Pageable pageable) {
+    public Page<BidResponse> getBidHistory(String auctionId, Pageable pageable) {
         return bidRepository.findAllByAuctionIdOrderByBidTimeDesc(auctionId, pageable)
                 .map(bid -> BidResponse.builder()
                         .auctionId(auctionId)
@@ -59,7 +59,7 @@ public class BiddingServiceImpl implements BiddingService {
 
     @Override
     @Transactional(readOnly = true)
-    public BidResponse getCurrentLeader(Long auctionId) {
+    public BidResponse getCurrentLeader(String auctionId) {
         return bidRepository.findTopByAuctionIdAndStatusOrderByAmountDesc(auctionId, BidStatus.WINNING)
                 .map(bid -> BidResponse.builder()
                         .auctionId(auctionId)
@@ -73,7 +73,7 @@ public class BiddingServiceImpl implements BiddingService {
                 .orElseThrow(() -> new ResourceNotFoundException("No bids found"));
     }
 
-    private void triggerAutoBidProcessing(Long auctionId, Long bidderId) {
+    private void triggerAutoBidProcessing(String auctionId, String bidderId) {
         Runnable task = () -> autoBidService.processAutoBidsForAuction(auctionId, bidderId);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

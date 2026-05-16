@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuditLogResponse {
-    private Long id;
+    private String id;
     private String actor;
     private AuditAction action;
     private String entityType;

@@ -29,7 +29,7 @@ public class AutoBidServiceImpl implements AutoBidService {
 
     @Override
     @Transactional
-    public AutoBidConfigResponse upsertConfig(Long auctionId, String bidderEmail, BigDecimal maxAmount) {
+    public AutoBidConfigResponse upsertConfig(String auctionId, String bidderEmail, BigDecimal maxAmount) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         User bidder = userRepository.findByEmail(bidderEmail)
@@ -43,7 +43,7 @@ public class AutoBidServiceImpl implements AutoBidService {
 
     @Override
     @Transactional
-    public void deactivateConfig(Long auctionId, String bidderEmail) {
+    public void deactivateConfig(String auctionId, String bidderEmail) {
         AutoBidConfig config = autoBidConfigRepository.findByAuctionIdAndBidderEmail(auctionId, bidderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Auto-bid config not found"));
         config.setActive(false);
@@ -51,7 +51,7 @@ public class AutoBidServiceImpl implements AutoBidService {
 
     @Override
     @Transactional(readOnly = true)
-    public AutoBidConfigResponse getOwnConfig(Long auctionId, String bidderEmail) {
+    public AutoBidConfigResponse getOwnConfig(String auctionId, String bidderEmail) {
         return autoBidConfigRepository.findByAuctionIdAndBidderEmail(auctionId, bidderEmail)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Auto-bid config not found"));
@@ -60,7 +60,7 @@ public class AutoBidServiceImpl implements AutoBidService {
     @Override
     @Async("domainEventExecutor")
     @Transactional
-    public void processAutoBidsForAuction(Long auctionId, Long excludeBidderId) {
+    public void processAutoBidsForAuction(String auctionId, String excludeBidderId) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         BigDecimal currentPrice = auction.getCurrentPrice() == null ? auction.getStartingPrice() : auction.getCurrentPrice();

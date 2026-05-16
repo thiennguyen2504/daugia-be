@@ -4,8 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
@@ -16,6 +14,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -23,18 +22,18 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "audit_logs", indexes = {
-        @Index(name = "idx_al_actor", columnList = "actor"),
-        @Index(name = "idx_al_action", columnList = "action"),
-        @Index(name = "idx_al_created_at", columnList = "created_at"),
-        @Index(name = "idx_al_entity", columnList = "entity_type,entity_id")
+        @Index(name = "idx_audit_actor", columnList = "actor_email"),
+        @Index(name = "idx_audit_action", columnList = "action"),
+        @Index(name = "idx_audit_entity", columnList = "entity_type,entity_id"),
+        @Index(name = "idx_audit_created", columnList = "created_at")
 })
 public class AuditLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 36)
+    private String id;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "actor_email", nullable = false, length = 255)
     private String actor;
 
     @Enumerated(EnumType.STRING)
@@ -44,30 +43,31 @@ public class AuditLog {
     @Column(name = "entity_type", length = 50)
     private String entityType;
 
-    @Column(name = "entity_id", length = 100)
+    @Column(name = "entity_id", length = 36)
     private String entityId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 10)
     private AuditOutcome outcome;
-
-    @Column(name = "ip_address", length = 45)
-    private String ipAddress;
-
-    @Column(name = "user_agent", length = 500)
-    private String userAgent;
 
     @Column(columnDefinition = "TEXT")
     private String detail;
 
-    @Column(name = "request_id", length = 36)
+    @Column(length = 100)
+    private String ipAddress;
+
+    @Column(length = 255)
+    private String userAgent;
+
+    @Column(length = 100)
     private String requestId;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
-    void prePersist() {
+    protected void prePersist() {
+        if (this.id == null) this.id = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
     }
 }

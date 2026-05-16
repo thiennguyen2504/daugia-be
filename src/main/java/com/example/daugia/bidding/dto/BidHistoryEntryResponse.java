@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BidHistoryEntryResponse {
-    private Long id;
-    private Long auctionId;
+    private String id;
+    private String auctionId;
     private String bidderEmailMasked;
     private BigDecimal amount;
     private BigDecimal bidIncrementApplied;

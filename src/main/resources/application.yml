@@ -59,14 +59,14 @@ jwt:
 domain:
   url: http://localhost:3000
 
+# NOTE: All entity PKs are now UUID strings (VARCHAR 36).
+# For production migration, a Flyway/Liquibase script converting BIGINT PKs to VARCHAR is required.
 auction:
   scheduler:
     enabled: true
   redis:
     pubsub:
       enabled: false
-  deposit:
-    ratio: 0.10
   antinsiping:
     window-seconds: 60
     extension-seconds: 120

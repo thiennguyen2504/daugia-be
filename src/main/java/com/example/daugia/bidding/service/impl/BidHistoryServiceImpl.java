@@ -25,7 +25,7 @@ public class BidHistoryServiceImpl implements BidHistoryService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void record(Long auctionId, String bidderEmail, BigDecimal amount, BigDecimal increment, BidType bidType) {
+    public void record(String auctionId, String bidderEmail, BigDecimal amount, BigDecimal increment, BidType bidType) {
         int nextStep = bidHistoryRepository.countByAuctionIdWithLock(auctionId) + 1;
 
         bidHistoryRepository.save(BidHistoryEntry.builder()
@@ -40,7 +40,7 @@ public class BidHistoryServiceImpl implements BidHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<BidHistoryEntryResponse> getHistory(Long auctionId, int page, int size) {
+    public PageResponse<BidHistoryEntryResponse> getHistory(String auctionId, int page, int size) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "bidTime"));
         return PageResponse.from(bidHistoryRepository.findAllByAuctionIdOrderByBidTimeDesc(auctionId, pageable)
                 .map(entry -> BidHistoryEntryResponse.builder()
