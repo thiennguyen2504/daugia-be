@@ -57,10 +57,12 @@ public class BidExecutorImpl implements BidExecutor {
         User bidder = userRepository.findByEmail(bidderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Bidder not found"));
 
+        log.debug("Executing bid: auctionId={} bidderEmail={} amount={} bidType={}", auctionId, bidderEmail, amount, bidType);
+
         // Just-in-time activation if scheduler hasn't run yet
         if (auction.getStatus() == AuctionStatus.APPROVED &&
             !LocalDateTime.now().isBefore(auction.getBiddingStartTime())) {
-            log.info("[JIT] Activating auction {} for bid", auctionId);
+            log.warn("[JIT] Activating auction {} for bid", auctionId);
             auction.setStatus(AuctionStatus.ACTIVE);
         }
 
@@ -90,6 +92,7 @@ public class BidExecutorImpl implements BidExecutor {
         applyAntiSniping(auction);
 
         if (auction.getBuyNowPrice() != null && amount.compareTo(auction.getBuyNowPrice()) == 0) {
+            log.info("Auction {} ended early due to BUY_NOW bid from {}", auction.getId(), bidder.getEmail());
             auction.setStatus(AuctionStatus.ENDED);
             eventPublisher.publish(new AuctionEndedEvent(auction.getId(), bidder.getId(), amount,
                     auction.getProductName(),
@@ -98,9 +101,15 @@ public class BidExecutorImpl implements BidExecutor {
         }
 
         eventPublisher.publish(new BidPlacedEvent(auctionId, bid.getId(), bidder.getId(), amount));
-        auditService.log(bidderEmail, AuditAction.BID_PLACED, "BID", bid.getId(),
+        
+        boolean isWs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes() == null;
+        AuditAction placeAction = isWs ? AuditAction.BID_PLACED_WS : AuditAction.BID_PLACED;
+        
+        auditService.log(bidderEmail, placeAction, "BID", bid.getId(),
             AuditOutcome.SUCCESS,
             AuditJsonUtils.toJson("auctionId", auctionId, "amount", amount));
+            
+        log.info("Bid accepted: auctionId={} bidId={} newPrice={} endTime={}", auctionId, bid.getId(), amount, auction.getEndTime());
         BidResponse response = toAcceptedResponse(auction, bid, bidder.getEmail());
         leaderboardService.updateLeaderboard(auctionId, bidder.getEmail(), amount, auction.getEndTime());
         redisBidPublisher.publish(response);
@@ -111,8 +120,10 @@ public class BidExecutorImpl implements BidExecutor {
     private void applyAntiSniping(Auction auction) {
         long secondsRemaining = Duration.between(LocalDateTime.now(), auction.getEndTime()).getSeconds();
         if (secondsRemaining <= auctionProperties.antinsiping().windowSeconds()) {
+            LocalDateTime oldEndTime = auction.getEndTime();
             auction.setEndTime(auction.getEndTime().plusSeconds(auctionProperties.antinsiping().extensionSeconds()));
             auction.setExtensionCount(auction.getExtensionCount() + 1);
+            log.warn("Anti-snipe triggered for auction {}. Extended endTime from {} to {}", auction.getId(), oldEndTime, auction.getEndTime());
         }
     }
 

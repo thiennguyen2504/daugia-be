@@ -2,11 +2,13 @@ package com.example.daugia.auth.filter;
 
 import com.example.daugia.auth.config.JwtAuthenticationEntryPoint;
 import com.example.daugia.auth.service.TokenBlacklistService;
+import com.example.daugia.common.utils.LogSanitizer;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -18,6 +20,7 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtBlacklistFilter extends OncePerRequestFilter {
 
     private final TokenBlacklistService tokenBlacklistService;
@@ -33,6 +36,7 @@ public class JwtBlacklistFilter extends OncePerRequestFilter {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String accessToken = authHeader.substring(7);
                 if (tokenBlacklistService.isTokenBlacklisted(accessToken)) {
+                    log.warn("Rejected blacklisted token: {} on path {}", LogSanitizer.maskToken(accessToken), request.getRequestURI());
                     throw new BadCredentialsException("Access token has been blacklisted");
                 }
             }

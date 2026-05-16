@@ -12,6 +12,7 @@ import com.example.daugia.common.exception.ResourceNotFoundException;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +21,14 @@ import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AutoBidServiceImpl implements AutoBidService {
 
     private final AutoBidConfigRepository autoBidConfigRepository;
     private final AuctionRepository auctionRepository;
     private final UserRepository userRepository;
     private final BidExecutor bidExecutor;
+    private final com.example.daugia.common.audit.AuditService auditService;
 
     @Override
     @Transactional
@@ -38,7 +41,11 @@ public class AutoBidServiceImpl implements AutoBidService {
                 .orElseGet(() -> AutoBidConfig.builder().auction(auction).bidder(bidder).build());
         config.setMaxAmount(maxAmount);
         config.setActive(true);
-        return toResponse(autoBidConfigRepository.save(config));
+        config = autoBidConfigRepository.save(config);
+        auditService.log(bidderEmail, com.example.daugia.common.audit.AuditAction.AUTO_BID_CONFIGURED, "AUTO_BID_CONFIG", config.getId(),
+                com.example.daugia.common.audit.AuditOutcome.SUCCESS, 
+                com.example.daugia.common.audit.AuditJsonUtils.toJson("auctionId", auctionId, "maxAmount", maxAmount));
+        return toResponse(config);
     }
 
     @Override
@@ -47,6 +54,9 @@ public class AutoBidServiceImpl implements AutoBidService {
         AutoBidConfig config = autoBidConfigRepository.findByAuctionIdAndBidderEmail(auctionId, bidderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Auto-bid config not found"));
         config.setActive(false);
+        auditService.log(bidderEmail, com.example.daugia.common.audit.AuditAction.AUTO_BID_DEACTIVATED, "AUTO_BID_CONFIG", config.getId(),
+                com.example.daugia.common.audit.AuditOutcome.SUCCESS, 
+                com.example.daugia.common.audit.AuditJsonUtils.toJson("auctionId", auctionId));
     }
 
     @Override
@@ -61,17 +71,26 @@ public class AutoBidServiceImpl implements AutoBidService {
     @Async("domainEventExecutor")
     @Transactional
     public void processAutoBidsForAuction(String auctionId, String excludeBidderId) {
+        log.debug("Processing auto-bids for auctionId={}, excludeBidderId={}", auctionId, excludeBidderId);
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         BigDecimal currentPrice = auction.getCurrentPrice() == null ? auction.getStartingPrice() : auction.getCurrentPrice();
-        autoBidConfigRepository
+        
+        var configs = autoBidConfigRepository
                 .findAllByAuctionIdAndActiveTrueAndBidderIdNotAndMaxAmountGreaterThanOrderByMaxAmountDesc(
-                        auctionId, excludeBidderId, currentPrice)
-                .stream()
+                        auctionId, excludeBidderId, currentPrice);
+                        
+        if (configs.isEmpty()) {
+            log.debug("No eligible auto-bid found for auctionId={}", auctionId);
+            return;
+        }
+        
+        configs.stream()
                 .findFirst()
                 .ifPresent(config -> {
                     BigDecimal nextBid = currentPrice.add(auction.getBidIncrement()).min(config.getMaxAmount());
                     if (nextBid.compareTo(currentPrice) > 0) {
+                        log.info("Auto-bid fired: auctionId={} autoBidderEmail={} nextBid={}", auctionId, config.getBidder().getEmail(), nextBid);
                         bidExecutor.execute(auctionId, config.getBidder().getEmail(), nextBid, BidType.AUTO);
                     }
                 });

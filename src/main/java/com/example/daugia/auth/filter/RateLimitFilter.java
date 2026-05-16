@@ -1,5 +1,6 @@
 package com.example.daugia.auth.filter;
 
+import com.example.daugia.common.utils.LogSanitizer;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
@@ -7,16 +8,19 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
+@Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final String AUTH_PATH_PREFIX = "/api/v1/auth/";
@@ -38,6 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         Bucket bucket = buckets.computeIfAbsent(clientIp, key -> newBucket());
 
         if (!bucket.tryConsume(1)) {
+            log.warn("Rate limit exceeded for clientIp={}, path={}, timestamp={}", LogSanitizer.maskIp(clientIp), path, LocalDateTime.now());
             response.setStatus(429);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(RATE_LIMIT_BODY);

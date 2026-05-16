@@ -19,6 +19,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import com.example.daugia.common.audit.AuditService;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditJsonUtils;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -36,6 +41,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentServiceImpl implements PaymentService {
 
     private static final String HMAC_ALGORITHM = "HmacSHA512";
@@ -49,6 +55,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final VnpayProperties vnpayProperties;
     private final DomainEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -104,56 +111,73 @@ public class PaymentServiceImpl implements PaymentService {
         String query = buildQueryString(params);
         String secureHash = hmacSHA512(vnpayProperties.getHashSecret(), query);
 
-        return vnpayProperties.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
+        String paymentUrl = vnpayProperties.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
+        log.info("Payment URL created: auctionId={} winnerEmail={} txnRef={}", auctionId, winnerEmail, txnRef);
+        auditService.log(winnerEmail, AuditAction.PAYMENT_INITIATED, "PAYMENT", payment.getId(),
+                AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", txnRef, "amount", amount));
+        return paymentUrl;
     }
 
     @Override
     @Transactional
     public PaymentResponse handleCallback(Map<String, String> params) {
-        String txnRef = params.get("vnp_TxnRef");
-        if (txnRef == null || txnRef.isBlank()) {
-            throw new AppException("Missing vnp_TxnRef", HttpStatus.BAD_REQUEST);
-        }
-
-        Payment payment = paymentRepository.findByVnpayTxnRef(txnRef)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
-
-        String secureHash = params.get("vnp_SecureHash");
-        String responseCode = params.get("vnp_ResponseCode");
-        String transactionNo = params.get("vnp_TransactionNo");
-
-        Map<String, String> signedParams = params.entrySet().stream()
-                .filter(entry -> entry.getKey() != null)
-                .filter(entry -> !"vnp_SecureHash".equals(entry.getKey()))
-                .filter(entry -> !"vnp_SecureHashType".equals(entry.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        String hashData = buildQueryString(signedParams);
-        String computedHash = hmacSHA512(vnpayProperties.getHashSecret(), hashData);
-
-        payment.setVnpayResponseCode(responseCode);
-
-        if (secureHash == null || !secureHash.equalsIgnoreCase(computedHash) || !"00".equals(responseCode)) {
-            if (payment.getStatus() != PaymentStatus.PAID) {
-                payment.setStatus(PaymentStatus.FAILED);
+        try {
+            String txnRef = params.get("vnp_TxnRef");
+            if (txnRef == null || txnRef.isBlank()) {
+                throw new AppException("Missing vnp_TxnRef", HttpStatus.BAD_REQUEST);
             }
-            paymentRepository.save(payment);
+
+            Payment payment = paymentRepository.findByVnpayTxnRef(txnRef)
+                    .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+
+            String secureHash = params.get("vnp_SecureHash");
+            String responseCode = params.get("vnp_ResponseCode");
+            String transactionNo = params.get("vnp_TransactionNo");
+            
+            log.info("Payment callback received: txnRef={} responseCode={}", txnRef, responseCode);
+
+            Map<String, String> signedParams = params.entrySet().stream()
+                    .filter(entry -> entry.getKey() != null)
+                    .filter(entry -> !"vnp_SecureHash".equals(entry.getKey()))
+                    .filter(entry -> !"vnp_SecureHashType".equals(entry.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            String hashData = buildQueryString(signedParams);
+            String computedHash = hmacSHA512(vnpayProperties.getHashSecret(), hashData);
+
+            payment.setVnpayResponseCode(responseCode);
+
+            if (secureHash == null || !secureHash.equalsIgnoreCase(computedHash) || !"00".equals(responseCode)) {
+                String reason = (secureHash == null || !secureHash.equalsIgnoreCase(computedHash)) ? "Hash mismatch" : "Failed response code " + responseCode;
+                log.warn("Payment callback failed: txnRef={} reason={}", txnRef, reason);
+                if (payment.getStatus() != PaymentStatus.PAID) {
+                    payment.setStatus(PaymentStatus.FAILED);
+                }
+                paymentRepository.save(payment);
+                auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_FAILED, "PAYMENT", payment.getId(),
+                        AuditOutcome.FAILURE, null, AuditJsonUtils.toJson("txnRef", txnRef, "reason", reason));
+                return toResponse(payment, null);
+            }
+
+            if (payment.getStatus() != PaymentStatus.PAID) {
+                payment.setStatus(PaymentStatus.PAID);
+                payment.setVnpayTransactionNo(transactionNo);
+                payment.setPaidAt(LocalDateTime.now());
+                paymentRepository.save(payment);
+
+                eventPublisher.publish(new PaymentCompletedEvent(
+                        payment.getAuction().getId(),
+                        payment.getPayer().getEmail(),
+                        payment.getAmount()));
+                auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_SUCCEEDED, "PAYMENT", payment.getId(),
+                        AuditOutcome.SUCCESS, null, AuditJsonUtils.toJson("txnRef", txnRef, "transactionNo", transactionNo));
+            }
+
             return toResponse(payment, null);
+        } catch (Exception ex) {
+            log.error("Unexpected exception in payment handleCallback: ", ex);
+            throw ex;
         }
-
-        if (payment.getStatus() != PaymentStatus.PAID) {
-            payment.setStatus(PaymentStatus.PAID);
-            payment.setVnpayTransactionNo(transactionNo);
-            payment.setPaidAt(LocalDateTime.now());
-            paymentRepository.save(payment);
-
-            eventPublisher.publish(new PaymentCompletedEvent(
-                    payment.getAuction().getId(),
-                    payment.getPayer().getEmail(),
-                    payment.getAmount()));
-        }
-
-        return toResponse(payment, null);
     }
 
     @Override

@@ -2,9 +2,11 @@ package com.example.daugia.auth.service.impl;
 
 import com.example.daugia.common.exception.EmailSendingException;
 import com.example.daugia.auth.service.EmailService;
+import com.example.daugia.common.utils.LogSanitizer;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -17,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
@@ -27,7 +30,13 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendEmail(String to, String subject, String content) {
-        sendHtmlEmail(to, subject, content);
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+        } catch (Exception e) {
+            log.error("Failed to send email to {}", LogSanitizer.maskEmail(to), e);
+            throw e;
+        }
     }
 
     @Async
@@ -42,7 +51,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p style='margin-top:16px'>This code expires in 10 minutes.</p>"
                 + "<p>If you did not request this, you can ignore this email.</p>"
                 + "</div>";
-        sendHtmlEmail(to, subject, content);
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+        } catch (Exception e) {
+            log.error("Failed to send OTP email to {}", LogSanitizer.maskEmail(to), e);
+            throw e;
+        }
     }
 
     @Async
@@ -60,7 +75,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>Buyers will be able to find and bid on your item once bidding opens.</p>"
                 + "<p>Thank you for using SmartAuction!</p>"
                 + "</div>";
-        sendHtmlEmail(to, subject, content);
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+        } catch (Exception e) {
+            log.error("Failed to send Auction Approved email to {}", LogSanitizer.maskEmail(to), e);
+            throw e;
+        }
     }
 
     @Async
@@ -76,7 +97,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>If you believe this is an error, please contact our support team.</p>"
                 + "<p>Thank you for using SmartAuction.</p>"
                 + "</div>";
-        sendHtmlEmail(to, subject, content);
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+        } catch (Exception e) {
+            log.error("Failed to send Auction Rejected email to {}", LogSanitizer.maskEmail(to), e);
+            throw e;
+        }
     }
 
     @Async
@@ -88,7 +115,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>Hi " + winnerName + ",</p>"
                 + "<p>Your bid won the auction for <strong>" + productName + "</strong>.</p>"
                 + "</div>";
-        sendHtmlEmail(to, subject, content);
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+        } catch (Exception e) {
+            log.error("Failed to send Auction Winner email to {}", LogSanitizer.maskEmail(to), e);
+            throw e;
+        }
     }
 
     @Async
@@ -100,7 +133,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>Hi " + sellerName + ",</p>"
                 + "<p>Your auction for <strong>" + productName + "</strong> has ended with a winning bid.</p>"
                 + "</div>";
-        sendHtmlEmail(to, subject, content);
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+        } catch (Exception e) {
+            log.error("Failed to send Auction Sold email to {}", LogSanitizer.maskEmail(to), e);
+            throw e;
+        }
     }
 
     private void sendHtmlEmail(String to, String subject, String content) {
