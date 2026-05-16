@@ -15,6 +15,8 @@ import com.example.daugia.common.exception.DuplicateResourceException;
 import com.example.daugia.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +35,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final DomainEventPublisher eventPublisher;
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponse create(CategoryRequest request, String createdByEmail) {
         if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
             throw new DuplicateResourceException("Category name already exists: " + request.getName());
@@ -48,6 +51,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", key = "#id")
     public CategoryResponse update(Long id, CategoryRequest request) {
         Category category = categoryRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
@@ -67,6 +71,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", key = "#id")
     public void delete(Long id) {
         Category category = categoryRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
@@ -79,6 +84,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "categories", key = "#id")
     public CategoryResponse getById(Long id) {
         return categoryRepository.findByIdAndDeletedFalse(id)
                 .map(categoryMapper::toResponse)

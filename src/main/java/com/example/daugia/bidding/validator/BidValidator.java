@@ -21,6 +21,9 @@ public class BidValidator {
     }
 
     public Optional<BidResponse> validate(Auction auction, User bidder, BigDecimal amount) {
+        if (bidder.getId().equals(auction.getSeller().getId())) {
+            return Optional.of(rejected(auction, "Seller cannot bid on their own auction"));
+        }
         if (auction.getStatus() != AuctionStatus.ACTIVE) {
             return Optional.of(rejected(auction, "Auction not live"));
         }

@@ -28,6 +28,9 @@ import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,7 +44,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +69,7 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "auctions", allEntries = true)
     public AuctionResponse create(AuctionCreateRequest request, List<MultipartFile> images, String sellerEmail) throws IOException {
         User seller = userRepository.findByEmail(sellerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found: " + sellerEmail));
@@ -131,10 +138,8 @@ public class AuctionServiceImpl implements AuctionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Seller not found: " + sellerEmail));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<AuctionSummaryResponse> resultPage = auctionRepository
-                .findAllBySeller_Id(seller.getId(), pageable)
-                .map(auctionMapper::toSummary);
-        return PageResponse.from(resultPage);
+        Page<Auction> resultPage = auctionRepository.findAllBySeller_Id(seller.getId(), pageable);
+        return toSummaryPage(resultPage);
     }
 
     // ─── PUBLIC / BIDDER ──────────────────────────────────────────────────────
@@ -143,14 +148,13 @@ public class AuctionServiceImpl implements AuctionService {
     @Transactional(readOnly = true)
     public PageResponse<AuctionSummaryResponse> searchPublic(AuctionFilterRequest filter, int page, int size) {
         Pageable pageable = buildPageable(filter, page, size);
-        Page<AuctionSummaryResponse> resultPage = auctionRepository
-                .findAll(buildPublicSpecification(filter), pageable)
-                .map(auctionMapper::toSummary);
-        return PageResponse.from(resultPage);
+        Page<Auction> resultPage = auctionRepository.findAll(buildPublicSpecification(filter), pageable);
+        return toSummaryPage(resultPage);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "auctions", key = "#id + '-' + #isAdmin")
     public AuctionResponse getById(Long id, String currentUserEmail, boolean isAdmin) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
@@ -181,14 +185,16 @@ public class AuctionServiceImpl implements AuctionService {
     @Transactional(readOnly = true)
     public PageResponse<AuctionSummaryResponse> searchAdmin(AuctionFilterRequest filter, int page, int size) {
         Pageable pageable = buildPageable(filter, page, size);
-        Page<AuctionSummaryResponse> resultPage = auctionRepository
-                .findAll(buildAdminSpecification(filter), pageable)
-                .map(auctionMapper::toSummary);
-        return PageResponse.from(resultPage);
+        Page<Auction> resultPage = auctionRepository.findAll(buildAdminSpecification(filter), pageable);
+        return toSummaryPage(resultPage);
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "auctions", key = "#id + '-false'"),
+        @CacheEvict(value = "auctions", key = "#id + '-true'")
+    })
     public AuctionResponse review(Long id, AuctionReviewRequest request, String adminEmail) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
@@ -255,18 +261,54 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     private Specification<Auction> buildPublicSpecification(AuctionFilterRequest filter) {
-        return Specification.where(AuctionSpecification.publicVisible())
-                .and(AuctionSpecification.withSearch(filter.getSearch()))
-                .and(AuctionSpecification.withCategory(filter.getCategoryId()))
-                .and(AuctionSpecification.withMinPrice(filter.getMinPrice()))
-                .and(AuctionSpecification.withMaxPrice(filter.getMaxPrice()))
-                .and(AuctionSpecification.withStartFrom(filter.getStartFrom()))
-                .and(AuctionSpecification.withStartTo(filter.getStartTo()));
+        return Specification.allOf(
+                AuctionSpecification.publicVisible(),
+                AuctionSpecification.withSearch(filter.getSearch()),
+                AuctionSpecification.withCategory(filter.getCategoryId()),
+                AuctionSpecification.withMinPrice(filter.getMinPrice()),
+                AuctionSpecification.withMaxPrice(filter.getMaxPrice()),
+                AuctionSpecification.withStartFrom(filter.getStartFrom()),
+                AuctionSpecification.withStartTo(filter.getStartTo())
+        );
     }
 
     private Specification<Auction> buildAdminSpecification(AuctionFilterRequest filter) {
-        return Specification.where(AuctionSpecification.withStatus(filter.getStatus()))
-                .and(AuctionSpecification.withSearch(filter.getSearch()))
-                .and(AuctionSpecification.withCategory(filter.getCategoryId()));
+        return Specification.allOf(
+                AuctionSpecification.withStatus(filter.getStatus()),
+                AuctionSpecification.withSearch(filter.getSearch()),
+                AuctionSpecification.withCategory(filter.getCategoryId())
+        );
+    }
+
+    private PageResponse<AuctionSummaryResponse> toSummaryPage(Page<Auction> page) {
+        List<Long> ids = page.getContent().stream()
+                .map(Auction::getId)
+                .toList();
+        if (ids.isEmpty()) {
+            return PageResponse.<AuctionSummaryResponse>builder()
+                    .content(List.of())
+                    .pageNumber(page.getNumber())
+                    .pageSize(page.getSize())
+                    .totalElements(page.getTotalElements())
+                    .totalPages(page.getTotalPages())
+                    .last(page.isLast())
+                    .build();
+        }
+
+        Map<Long, Auction> auctionById = auctionRepository.findAllWithImagesByIds(ids).stream()
+                .collect(Collectors.toMap(Auction::getId, Function.identity()));
+        List<AuctionSummaryResponse> content = page.getContent().stream()
+                .map(auction -> auctionById.getOrDefault(auction.getId(), auction))
+                .map(auctionMapper::toSummary)
+                .toList();
+
+        return PageResponse.<AuctionSummaryResponse>builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 }

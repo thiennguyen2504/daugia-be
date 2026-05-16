@@ -7,12 +7,11 @@ import com.example.daugia.bidding.entity.AutoBidConfig;
 import com.example.daugia.bidding.entity.BidType;
 import com.example.daugia.bidding.repository.AutoBidConfigRepository;
 import com.example.daugia.bidding.service.AutoBidService;
-import com.example.daugia.bidding.service.BiddingService;
+import com.example.daugia.bidding.service.BidExecutor;
 import com.example.daugia.common.exception.ResourceNotFoundException;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +25,7 @@ public class AutoBidServiceImpl implements AutoBidService {
     private final AutoBidConfigRepository autoBidConfigRepository;
     private final AuctionRepository auctionRepository;
     private final UserRepository userRepository;
-    @Lazy
-    private final BiddingService biddingService;
+    private final BidExecutor bidExecutor;
 
     @Override
     @Transactional
@@ -74,7 +72,7 @@ public class AutoBidServiceImpl implements AutoBidService {
                 .ifPresent(config -> {
                     BigDecimal nextBid = currentPrice.add(auction.getBidIncrement()).min(config.getMaxAmount());
                     if (nextBid.compareTo(currentPrice) > 0) {
-                        biddingService.placeBid(auctionId, config.getBidder().getEmail(), nextBid, BidType.AUTO);
+                        bidExecutor.execute(auctionId, config.getBidder().getEmail(), nextBid, BidType.AUTO);
                     }
                 });
     }

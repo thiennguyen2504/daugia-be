@@ -37,6 +37,7 @@ class BidValidatorTest {
                 .currentPrice(new BigDecimal("100.00"))
                 .bidIncrement(new BigDecimal("10.00"))
                 .endTime(LocalDateTime.now().plusHours(1))
+                .seller(User.builder().id(99L).build())
                 .build();
         bidder = User.builder().id(2L).email("bidder@test.com").build();
     }

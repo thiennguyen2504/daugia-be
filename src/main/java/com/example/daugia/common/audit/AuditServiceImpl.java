@@ -74,7 +74,7 @@ public class AuditServiceImpl implements AuditService {
                                                  int page, int size) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Specification<AuditLog> specification = Specification.where(null);
+        Specification<AuditLog> specification = Specification.allOf();
         if (actor != null && !actor.isBlank()) {
             specification = specification.and((root, query, cb) -> cb.equal(root.get("actor"), actor));
         }

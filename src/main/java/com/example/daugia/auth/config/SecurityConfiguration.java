@@ -1,9 +1,9 @@
 package com.example.daugia.auth.config;
 
 import com.example.daugia.auth.filter.JwtBlacklistFilter;
+import com.example.daugia.auth.filter.RateLimitFilter;
 import com.example.daugia.auth.properties.JwtProperties;
 import com.example.daugia.common.filter.RequestLoggingFilter;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -35,7 +35,8 @@ public class SecurityConfiguration {
 
     private final JwtProperties jwtProperties;
     private final JwtBlacklistFilter jwtBlacklistFilter;
-        private final RequestLoggingFilter requestLoggingFilter;
+    private final RequestLoggingFilter requestLoggingFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Value("${domain.url}")
@@ -58,6 +59,7 @@ public class SecurityConfiguration {
                                 "/",
                                 "/ws/**",
                                 "/api/v1/auth/**",
+                                "/api/v1/payments/vnpay-return",
                                 "/error",
                                 "/h2-console/**",
                                 "/actuator/**",
@@ -68,8 +70,9 @@ public class SecurityConfiguration {
                                 "/swagger-ui.html")
                         .permitAll()
                         .anyRequest().authenticated())
-                .addFilterBefore(requestLoggingFilter, BearerTokenAuthenticationFilter.class)
                 .addFilterBefore(jwtBlacklistFilter, BearerTokenAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class)
+                .addFilterBefore(requestLoggingFilter, BearerTokenAuthenticationFilter.class)
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer -> jwtConfigurer

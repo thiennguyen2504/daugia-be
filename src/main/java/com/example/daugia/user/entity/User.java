@@ -54,7 +54,7 @@ public class User {
     private boolean enabled;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean locked = false;
 
     public String getUsername() {

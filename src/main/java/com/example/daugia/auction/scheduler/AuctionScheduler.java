@@ -29,6 +29,7 @@ public class AuctionScheduler {
     @SchedulerLock(name = "activateApprovedAuctions", lockAtMostFor = "PT55S", lockAtLeastFor = "PT10S")
     @Transactional
     public void activateApprovedAuctions() {
+        log.debug("[SCHEDULER] Checking for auctions to activate...");
         List<Auction> ready = auctionRepository.findApprovedReadyToActivate(LocalDateTime.now());
         if (!ready.isEmpty()) {
             ready.forEach(a -> a.setStatus(AuctionStatus.ACTIVE));
@@ -41,6 +42,7 @@ public class AuctionScheduler {
     @SchedulerLock(name = "endActiveAuctions", lockAtMostFor = "PT55S", lockAtLeastFor = "PT10S")
     @Transactional
     public void endActiveAuctions() {
+        log.debug("[SCHEDULER] Checking for auctions to end...");
         List<Auction> ended = auctionRepository.findActiveReadyToEnd(LocalDateTime.now());
         if (!ended.isEmpty()) {
             ended.forEach(a -> {

@@ -91,4 +91,10 @@ public class DomainEventListener {
         }
         emailService.sendAuctionSoldEmail(event.getSellerEmail(), event.getSellerName(), event.getProductName());
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPaymentCompleted(PaymentCompletedEvent event) {
+        log.info("[EVENT] PaymentCompleted — auction={}, payer={}, amount={}",
+                event.getAuctionId(), event.getPayerEmail(), event.getAmount());
+    }
 }

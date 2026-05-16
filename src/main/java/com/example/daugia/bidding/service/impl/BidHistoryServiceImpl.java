@@ -6,7 +6,6 @@ import com.example.daugia.bidding.entity.BidType;
 import com.example.daugia.bidding.repository.BidHistoryRepository;
 import com.example.daugia.bidding.service.BidHistoryService;
 import com.example.daugia.bidding.util.EmailMaskingUtils;
-import com.example.daugia.common.audit.AuditJsonUtils;
 import com.example.daugia.common.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +26,7 @@ public class BidHistoryServiceImpl implements BidHistoryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void record(Long auctionId, String bidderEmail, BigDecimal amount, BigDecimal increment, BidType bidType) {
-        int nextStep = bidHistoryRepository.countByAuctionId(auctionId) + 1;
+        int nextStep = bidHistoryRepository.countByAuctionIdWithLock(auctionId) + 1;
 
         bidHistoryRepository.save(BidHistoryEntry.builder()
                 .auctionId(auctionId)

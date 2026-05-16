@@ -41,7 +41,9 @@ class BiddingFlowIntegrationTest {
     @jakarta.annotation.Resource UserRepository userRepository;
     @jakarta.annotation.Resource RoleRepository roleRepository;
     @jakarta.annotation.Resource CategoryRepository categoryRepository;
+    @SuppressWarnings("removal")
     @MockBean RedisBidPublisher redisBidPublisher;
+    @SuppressWarnings("removal")
     @MockBean LeaderboardService leaderboardService;
 
     @Test
