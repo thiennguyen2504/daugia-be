@@ -13,4 +13,6 @@ public class AuctionImageResponse {
     private String imageUrl;
     private Integer sortOrder;
     private LocalDateTime uploadedAt;
+    private LocalDateTime updatedAt;
 }
+

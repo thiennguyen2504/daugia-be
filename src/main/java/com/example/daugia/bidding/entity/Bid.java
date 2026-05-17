@@ -12,6 +12,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
@@ -62,6 +63,8 @@ public class Bid {
     @Column(updatable = false)
     private LocalDateTime bidTime;
 
+    private LocalDateTime updatedAt;
+
     @Version
     private Long version;
 
@@ -69,5 +72,12 @@ public class Bid {
     protected void prePersist() {
         if (this.id == null) this.id = UUID.randomUUID().toString();
         this.bidTime = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
+

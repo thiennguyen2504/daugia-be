@@ -21,4 +21,7 @@ public class PaymentResponse {
     private String paymentUrl;
     private String vnpayTransactionNo;
     private LocalDateTime paidAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
+

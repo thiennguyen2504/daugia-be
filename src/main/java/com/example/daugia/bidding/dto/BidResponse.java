@@ -21,4 +21,6 @@ public class BidResponse {
     private LocalDateTime endTime;
     private String status;
     private String rejectionReason;
+    private LocalDateTime bidTime;
+    private LocalDateTime updatedAt;
 }

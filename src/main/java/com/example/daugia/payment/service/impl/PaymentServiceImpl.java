@@ -201,8 +201,11 @@ public class PaymentServiceImpl implements PaymentService {
                 .paymentUrl(paymentUrl)
                 .vnpayTransactionNo(payment.getVnpayTransactionNo())
                 .paidAt(payment.getPaidAt())
+                .createdAt(payment.getCreatedAt())
+                .updatedAt(payment.getUpdatedAt())
                 .build();
     }
+
 
     private String buildQueryString(Map<String, String> params) {
         return params.entrySet().stream()

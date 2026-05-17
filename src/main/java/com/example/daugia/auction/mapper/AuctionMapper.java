@@ -23,5 +23,8 @@ public interface AuctionMapper {
     @Mapping(target = "thumbnailUrl", expression = "java(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())")
     AuctionSummaryResponse toSummary(Auction auction);
 
+    @Mapping(target = "uploadedAt", source = "createdAt")
+    @Mapping(target = "updatedAt",  source = "updatedAt")
     AuctionImageResponse toImageResponse(AuctionImage image);
 }
+

@@ -54,8 +54,11 @@ public class BiddingServiceImpl implements BiddingService {
                         .winnerEmail(EmailMaskingUtils.mask(bid.getBidder().getEmail()))
                         .endTime(bid.getAuction().getEndTime())
                         .status(bid.getStatus().name())
+                        .bidTime(bid.getBidTime())
+                        .updatedAt(bid.getUpdatedAt())
                         .build());
     }
+
 
     @Override
     @Transactional(readOnly = true)
