@@ -14,5 +14,8 @@ public interface UserService {
     void lockUser(String targetUserId, String adminEmail, String reason);
     void unlockUser(String targetUserId, String adminEmail, String reason);
     PageResponse<UserAccountLogDto> getAccountLogs(String userId, int page, int size);
-    UserDto updateProfile(String email, String fullName, String phone, MultipartFile avatar) throws IOException;
+    UserDto updateProfile(String email, String fullName, String phone,
+                          String street, String ward, String province,
+                          MultipartFile avatar) throws IOException;
+
 }

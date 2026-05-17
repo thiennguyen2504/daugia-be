@@ -43,13 +43,16 @@ public class UserController {
 
     @PutMapping(value = "/profile", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
-    @Transactional
     public ResponseEntity<ApiResponse<UserDto>> updateProfile(
-            @RequestParam(value = "fullName", required = false) String fullName,
-            @RequestParam(value = "phone",    required = false) String phone,
-            @RequestParam(value = "avatar",   required = false) MultipartFile avatar,
+            @RequestParam(value = "fullName",  required = false) String fullName,
+            @RequestParam(value = "phone",     required = false) String phone,
+            @RequestParam(value = "street",    required = false) String street,
+            @RequestParam(value = "ward",      required = false) String ward,
+            @RequestParam(value = "province",  required = false) String province,
+            @RequestParam(value = "avatar",    required = false) MultipartFile avatar,
             @AuthenticationPrincipal Jwt jwt) throws IOException {
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully",
-                userService.updateProfile(jwt.getSubject(), fullName, phone, avatar)));
+                userService.updateProfile(jwt.getSubject(), fullName, phone, street, ward, province, avatar)));
     }
+
 }

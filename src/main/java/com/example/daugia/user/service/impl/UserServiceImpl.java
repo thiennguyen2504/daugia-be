@@ -120,7 +120,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserDto updateProfile(String email, String fullName, String phone, org.springframework.web.multipart.MultipartFile avatar) throws java.io.IOException {
+    public UserDto updateProfile(String email, String fullName, String phone,
+                                 String street, String ward, String province,
+                                 org.springframework.web.multipart.MultipartFile avatar) throws java.io.IOException {
         com.example.daugia.user.entity.User user = repository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -134,6 +136,10 @@ public class UserServiceImpl implements UserService {
             user.setPhone(phone);
         }
 
+        if (street != null) user.setStreet(street);
+        if (ward != null)   user.setWard(ward);
+        if (province != null) user.setProvince(province);
+
         if (avatar != null && !avatar.isEmpty()) {
             if (user.getAvatarPublicId() != null) {
                 storageService.delete(user.getAvatarPublicId());
@@ -144,6 +150,11 @@ public class UserServiceImpl implements UserService {
             user.setAvatarPublicId(result.publicId());
         }
 
-        return userMapper.toDto(repository.save(user));
+        UserDto updated = userMapper.toDto(repository.save(user));
+        auditService.log(email, AuditAction.PROFILE_UPDATED, "USER", user.getId(),
+                AuditOutcome.SUCCESS,
+                AuditJsonUtils.toJson("email", email));
+        return updated;
     }
+
 }

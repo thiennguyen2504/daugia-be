@@ -8,12 +8,14 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -48,6 +50,15 @@ public class User {
     @Column(length = 255)
     private String avatarPublicId;
 
+    @Column(length = 255)
+    private String street;
+
+    @Column(length = 100)
+    private String ward;
+
+    @Column(length = 100)
+    private String province;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
@@ -58,9 +69,21 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean locked = false;
 
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
     @PrePersist
     protected void prePersist() {
         if (this.id == null) this.id = UUID.randomUUID().toString();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     public String getUsername() {
@@ -72,3 +95,4 @@ public class User {
     }
 
 }
+
