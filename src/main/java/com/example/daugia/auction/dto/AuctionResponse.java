@@ -21,7 +21,17 @@ public class AuctionResponse {
     private AuctionStatus status;
     private String rejectionReason;
     private LocalDateTime biddingStartTime;
+    /**
+     * biddingEndTime — original end time as submitted by seller, never changes.
+     */
     private LocalDateTime biddingEndTime;
+
+    /**
+     * endTime — effective end time, may be extended by anti-snipe logic.
+     */
+    private LocalDateTime endTime;
+    /** Number of times the auction end time was extended by anti-snipe logic. */
+    private int extensionCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     // Seller info (flattened)

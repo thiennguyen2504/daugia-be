@@ -18,6 +18,10 @@ public class AuctionSummaryResponse {
     private AuctionStatus status;
     private LocalDateTime biddingStartTime;
     private LocalDateTime biddingEndTime;
+    /**
+     * Effective end time; may be extended by anti-snipe logic.
+     */
+    private LocalDateTime endTime;
     private String categoryName;
     private String thumbnailUrl;
     private LocalDateTime createdAt;

@@ -78,33 +78,44 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException("Winning amount is invalid", HttpStatus.BAD_REQUEST);
         }
 
+        // Check for existing pending payment to make this endpoint idempotent
+        var existing = paymentRepository.findFirstByAuctionIdAndStatusOrderByCreatedAtDesc(auctionId, PaymentStatus.PENDING);
+        String ipAddress = resolveClientIp(request);
+        if (existing.isPresent()) {
+            log.info("Reusing existing pending payment: auctionId={} txnRef={}", auctionId, existing.get().getVnpayTxnRef());
+            return buildUrl(existing.get(), ipAddress, request);
+        }
+
         String txnRef = generateTxnRef();
         Payment payment = paymentRepository.save(Payment.builder()
-                .auction(auction)
-                .payer(winner)
-                .amount(amount)
-                .status(PaymentStatus.PENDING)
-                .vnpayTxnRef(txnRef)
-                .build());
+            .auction(auction)
+            .payer(winner)
+            .amount(amount)
+            .status(PaymentStatus.PENDING)
+            .vnpayTxnRef(txnRef)
+            .build());
 
+        return buildUrl(payment, ipAddress, request);
+    }
+
+        private String buildUrl(Payment payment, String ipAddress, HttpServletRequest request) {
         String createDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String ipAddress = resolveClientIp(request);
 
         Map<String, String> params = new HashMap<>();
         params.put("vnp_Version", VNP_VERSION);
         params.put("vnp_Command", VNP_COMMAND);
         params.put("vnp_TmnCode", vnpayProperties.getTmnCode());
-        params.put("vnp_Amount", amount.multiply(BigDecimal.valueOf(100))
-                .setScale(0, RoundingMode.HALF_UP).toPlainString());
+        params.put("vnp_Amount", payment.getAmount().multiply(BigDecimal.valueOf(100))
+            .setScale(0, RoundingMode.HALF_UP).toPlainString());
         params.put("vnp_CurrCode", VNP_CURRENCY);
-        params.put("vnp_TxnRef", txnRef);
-        params.put("vnp_OrderInfo", "Payment for auction " + auctionId);
+        params.put("vnp_TxnRef", payment.getVnpayTxnRef());
+        params.put("vnp_OrderInfo", "Payment for auction " + payment.getAuction().getId());
         params.put("vnp_OrderType", "other");
         params.put("vnp_Locale", VNP_LOCALE);
         params.put("vnp_ReturnUrl", vnpayProperties.getReturnUrl());
         params.put("vnp_IpAddr", ipAddress);
         params.put("vnp_CreateDate", createDate);
-        
+
         String expireDate = LocalDateTime.now().plusMinutes(15).format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         params.put("vnp_ExpireDate", expireDate);
 
@@ -112,11 +123,11 @@ public class PaymentServiceImpl implements PaymentService {
         String secureHash = hmacSHA512(vnpayProperties.getHashSecret(), query);
 
         String paymentUrl = vnpayProperties.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
-        log.info("Payment URL created: auctionId={} winnerEmail={} txnRef={}", auctionId, winnerEmail, txnRef);
-        auditService.log(winnerEmail, AuditAction.PAYMENT_INITIATED, "PAYMENT", payment.getId(),
-                AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", txnRef, "amount", amount));
+        log.info("Payment URL built: auctionId={} txnRef={}", payment.getAuction().getId(), payment.getVnpayTxnRef());
+        auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_INITIATED, "PAYMENT", payment.getId(),
+            AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", payment.getVnpayTxnRef(), "amount", payment.getAmount()));
         return paymentUrl;
-    }
+        }
 
     @Override
     @Transactional

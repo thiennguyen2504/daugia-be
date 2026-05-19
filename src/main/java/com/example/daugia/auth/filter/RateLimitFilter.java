@@ -1,9 +1,8 @@
 package com.example.daugia.auth.filter;
 
 import com.example.daugia.common.utils.LogSanitizer;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,15 +10,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -27,7 +26,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String HEADER_X_FORWARDED_FOR = "X-Forwarded-For";
     private static final String RATE_LIMIT_BODY = "{\"error\":\"TOO_MANY_REQUESTS\",\"message\":\"Too many requests, please try again later.\"}";
 
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -39,9 +38,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         String clientIp = resolveClientIp(request);
-        Bucket bucket = buckets.computeIfAbsent(clientIp, key -> newBucket());
+        boolean limited = false;
+        try {
+            limited = isRateLimited(clientIp);
+        } catch (RedisConnectionFailureException ex) {
+            log.warn("Redis unavailable for rate limiter — failing open", ex);
+            limited = false;
+        }
 
-        if (!bucket.tryConsume(1)) {
+        if (limited) {
             log.warn("Rate limit exceeded for clientIp={}, path={}, timestamp={}", LogSanitizer.maskIp(clientIp), path, LocalDateTime.now());
             response.setStatus(429);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -52,9 +57,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private Bucket newBucket() {
-        Bandwidth limit = Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1)));
-        return Bucket.builder().addLimit(limit).build();
+    private boolean isRateLimited(String clientIp) {
+        String key = "rate:auth:" + clientIp;
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            stringRedisTemplate.expire(key, Duration.ofMinutes(1));
+        }
+        return count != null && count > 20;
     }
 
     private String resolveClientIp(HttpServletRequest request) {

@@ -154,7 +154,6 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "auctions", key = "#id + '-' + #isAdmin")
     public AuctionResponse getById(String id, String currentUserEmail, boolean isAdmin) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
@@ -169,14 +168,22 @@ public class AuctionServiceImpl implements AuctionService {
             return auctionMapper.toResponse(auction);
         }
 
-        // Public / bidder: only APPROVED, ACTIVE, ENDED
+        // Public / bidder: only APPROVED, ACTIVE, ENDED — use cached public path
         if (auction.getStatus() == AuctionStatus.APPROVED
                 || auction.getStatus() == AuctionStatus.ACTIVE
                 || auction.getStatus() == AuctionStatus.ENDED) {
-            return auctionMapper.toResponse(auction);
+            return getByIdPublicCached(id);
         }
 
         throw new ResourceNotFoundException("Auction not found");
+    }
+
+    @Cacheable(value = "auctions", key = "#id + '-public'")
+    @Transactional(readOnly = true)
+    public AuctionResponse getByIdPublicCached(String id) {
+        return auctionRepository.findById(id)
+                .map(auctionMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
     }
 
     // ─── ADMIN ────────────────────────────────────────────────────────────────
@@ -191,10 +198,7 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     @Transactional
-    @Caching(evict = {
-        @CacheEvict(value = "auctions", key = "#id + '-false'"),
-        @CacheEvict(value = "auctions", key = "#id + '-true'")
-    })
+    @CacheEvict(value = "auctions", key = "#id + '-public'")
     public AuctionResponse review(String id, AuctionReviewRequest request, String adminEmail) {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));

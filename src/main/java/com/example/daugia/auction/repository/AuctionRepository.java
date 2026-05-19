@@ -24,6 +24,8 @@ public interface AuctionRepository extends JpaRepository<Auction, String>, JpaSp
     @Query("SELECT a FROM Auction a WHERE a.status = 'APPROVED' AND a.biddingStartTime <= :now")
     List<Auction> findApprovedReadyToActivate(@Param("now") LocalDateTime now);
 
+    // endTime is the effective end time (may be extended by anti-snipe);
+    // falls back to biddingEndTime for auctions approved before anti-snipe was introduced.
     @Query("SELECT a FROM Auction a WHERE a.status = 'ACTIVE' AND COALESCE(a.endTime, a.biddingEndTime) <= :now")
     List<Auction> findActiveReadyToEnd(@Param("now") LocalDateTime now);
 
@@ -31,6 +33,10 @@ public interface AuctionRepository extends JpaRepository<Auction, String>, JpaSp
     @Query("SELECT a FROM Auction a WHERE a.id = :id")
     Optional<Auction> findByIdWithLock(@Param("id") String id);
 
-    @Query("SELECT DISTINCT a FROM Auction a LEFT JOIN FETCH a.images WHERE a.id IN :ids")
+    @Query("SELECT DISTINCT a FROM Auction a " +
+           "LEFT JOIN FETCH a.images " +
+           "LEFT JOIN FETCH a.seller " +
+           "LEFT JOIN FETCH a.category " +
+           "WHERE a.id IN :ids")
     List<Auction> findAllWithImagesByIds(@Param("ids") List<String> ids);
 }

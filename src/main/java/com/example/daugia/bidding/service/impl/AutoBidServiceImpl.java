@@ -13,6 +13,10 @@ import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.example.daugia.common.audit.AuditService;
+import com.example.daugia.common.audit.AuditAction;
+import com.example.daugia.common.audit.AuditOutcome;
+import com.example.daugia.common.audit.AuditJsonUtils;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +32,7 @@ public class AutoBidServiceImpl implements AutoBidService {
     private final AuctionRepository auctionRepository;
     private final UserRepository userRepository;
     private final BidExecutor bidExecutor;
-    private final com.example.daugia.common.audit.AuditService auditService;
+        private final AuditService auditService;
 
     @Override
     @Transactional
@@ -42,9 +46,9 @@ public class AutoBidServiceImpl implements AutoBidService {
         config.setMaxAmount(maxAmount);
         config.setActive(true);
         config = autoBidConfigRepository.save(config);
-        auditService.log(bidderEmail, com.example.daugia.common.audit.AuditAction.AUTO_BID_CONFIGURED, "AUTO_BID_CONFIG", config.getId(),
-                com.example.daugia.common.audit.AuditOutcome.SUCCESS, 
-                com.example.daugia.common.audit.AuditJsonUtils.toJson("auctionId", auctionId, "maxAmount", maxAmount));
+        auditService.log(bidderEmail, AuditAction.AUTO_BID_CONFIGURED, "AUTO_BID_CONFIG", config.getId(),
+                AuditOutcome.SUCCESS,
+                AuditJsonUtils.toJson("auctionId", auctionId, "maxAmount", maxAmount));
         return toResponse(config);
     }
 
@@ -54,9 +58,9 @@ public class AutoBidServiceImpl implements AutoBidService {
         AutoBidConfig config = autoBidConfigRepository.findByAuctionIdAndBidderEmail(auctionId, bidderEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Auto-bid config not found"));
         config.setActive(false);
-        auditService.log(bidderEmail, com.example.daugia.common.audit.AuditAction.AUTO_BID_DEACTIVATED, "AUTO_BID_CONFIG", config.getId(),
-                com.example.daugia.common.audit.AuditOutcome.SUCCESS, 
-                com.example.daugia.common.audit.AuditJsonUtils.toJson("auctionId", auctionId));
+        auditService.log(bidderEmail, AuditAction.AUTO_BID_DEACTIVATED, "AUTO_BID_CONFIG", config.getId(),
+                AuditOutcome.SUCCESS,
+                AuditJsonUtils.toJson("auctionId", auctionId));
     }
 
     @Override

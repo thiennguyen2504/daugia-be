@@ -26,7 +26,7 @@ public class BidHistoryServiceImpl implements BidHistoryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void record(String auctionId, String bidderEmail, BigDecimal amount, BigDecimal increment, BidType bidType) {
-        int nextStep = bidHistoryRepository.countByAuctionIdWithLock(auctionId) + 1;
+        int nextStep = bidHistoryRepository.countByAuctionId(auctionId) + 1;
 
         bidHistoryRepository.save(BidHistoryEntry.builder()
                 .auctionId(auctionId)
