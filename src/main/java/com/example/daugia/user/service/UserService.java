@@ -10,6 +10,7 @@ import java.io.IOException;
 public interface UserService {
     PageResponse<UserDto> getAllUsers(int page, int size);
     UserDto findUserById(String id);
+    UserDto getMe(String email);
     String resolveUserId(String email);
     void lockUser(String targetUserId, String adminEmail, String reason);
     void unlockUser(String targetUserId, String adminEmail, String reason);

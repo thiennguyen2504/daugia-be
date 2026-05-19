@@ -35,6 +35,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Fetched users successfully", userService.getAllUsers(page, size)));
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UserDto>> getMe(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(ApiResponse.success("Fetched user successfully", userService.getMe(jwt.getSubject())));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable String id) {

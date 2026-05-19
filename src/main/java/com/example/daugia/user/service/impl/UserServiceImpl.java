@@ -50,6 +50,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserDto getMe(String email) {
+        return repository.findByEmail(email)
+                .map(userMapper::toDto)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+    }
+
+    @Override
     public String resolveUserId(String email) {
         return repository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email))

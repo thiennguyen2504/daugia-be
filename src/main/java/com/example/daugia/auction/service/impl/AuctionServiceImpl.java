@@ -267,6 +267,7 @@ public class AuctionServiceImpl implements AuctionService {
     private Specification<Auction> buildPublicSpecification(AuctionFilterRequest filter) {
         return Specification.allOf(
                 AuctionSpecification.publicVisible(),
+                AuctionSpecification.withStatus(filter.getStatus()),
                 AuctionSpecification.withSearch(filter.getSearch()),
                 AuctionSpecification.withCategory(filter.getCategoryId()),
                 AuctionSpecification.withMinPrice(filter.getMinPrice()),
