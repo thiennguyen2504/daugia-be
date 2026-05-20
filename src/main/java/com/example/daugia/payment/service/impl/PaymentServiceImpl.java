@@ -67,14 +67,14 @@ public class PaymentServiceImpl implements PaymentService {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         
-        if (auction.getStatus() != AuctionStatus.ENDED && auction.getStatus() != AuctionStatus.LIVE) {
+        if (auction.getStatus() != AuctionStatus.ENDED && (auction.getStatus() != AuctionStatus.LIVE || auction.getStatus() != AuctionStatus.ACTIVE )) {
             throw new AppException("Auction status is invalid for payment", HttpStatus.BAD_REQUEST);
         }
 
         User winner;
         BigDecimal amount;
 
-        if (auction.getStatus() == AuctionStatus.LIVE) {
+        if (auction.getStatus() == AuctionStatus.LIVE || auction.getStatus() == AuctionStatus.ACTIVE) {
             amount = auction.getBuyNowPrice(); 
             if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new AppException("This auction does not support Buy Now", HttpStatus.BAD_REQUEST);
@@ -194,7 +194,7 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentRepository.save(payment);
 
                 Auction auction = payment.getAuction();
-                if (auction.getStatus() == AuctionStatus.LIVE) {
+                if (auction.getStatus() == AuctionStatus.LIVE || auction.getStatus() == AuctionStatus.ACTIVE) {
                     auction.setStatus(AuctionStatus.ENDED);            
                     auction.setCurrentWinner(payment.getPayer());     
                     auction.setCurrentPrice(payment.getAmount());     
