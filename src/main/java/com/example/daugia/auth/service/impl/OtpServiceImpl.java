@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class OtpServiceImpl implements OtpService {
 
     private static final int OTP_LENGTH = 6;
-    private static final int OTP_TTL_MINUTES = 10;
+    private static final int OTP_TTL_MINUTES = 3;
 
     private final OtpRepository otpRepository;
     private final SecureRandom secureRandom = new SecureRandom();
