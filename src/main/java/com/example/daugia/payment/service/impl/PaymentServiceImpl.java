@@ -14,6 +14,7 @@ import com.example.daugia.payment.entity.PaymentStatus;
 import com.example.daugia.payment.repository.PaymentRepository;
 import com.example.daugia.payment.service.PaymentService;
 import com.example.daugia.user.entity.User;
+import com.example.daugia.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -55,6 +56,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final AuctionRepository auctionRepository;
     private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
     private final VnpayProperties vnpayProperties;
     private final DomainEventPublisher eventPublisher;
     private final AuditService auditService;
@@ -64,23 +66,36 @@ public class PaymentServiceImpl implements PaymentService {
     public String createPaymentUrl(String auctionId, String winnerEmail, HttpServletRequest request) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
-        if (auction.getStatus() != AuctionStatus.ENDED) {
-            throw new AppException("Auction is not ended", HttpStatus.BAD_REQUEST);
-        }
-        User winner = auction.getCurrentWinner();
-        if (winner == null || winner.getEmail() == null) {
-            throw new AppException("Auction does not have a winner", HttpStatus.BAD_REQUEST);
-        }
-        if (!winner.getEmail().equalsIgnoreCase(winnerEmail)) {
-            throw new AppException("You are not the auction winner", HttpStatus.FORBIDDEN);
+        
+        if (auction.getStatus() != AuctionStatus.ENDED && auction.getStatus() != AuctionStatus.LIVE) {
+            throw new AppException("Auction status is invalid for payment", HttpStatus.BAD_REQUEST);
         }
 
-        BigDecimal amount = auction.getCurrentPrice();
+        User winner;
+        BigDecimal amount;
+
+        if (auction.getStatus() == AuctionStatus.LIVE) {
+            amount = auction.getBuyNowPrice(); 
+            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new AppException("This auction does not support Buy Now", HttpStatus.BAD_REQUEST);
+            }
+            winner = userRepository.findByEmail(winnerEmail) 
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        } else {
+            winner = auction.getCurrentWinner();
+            if (winner == null || winner.getEmail() == null) {
+                throw new AppException("Auction does not have a winner", HttpStatus.BAD_REQUEST);
+            }
+            if (!winner.getEmail().equalsIgnoreCase(winnerEmail)) {
+                throw new AppException("You are not the auction winner", HttpStatus.FORBIDDEN);
+            }
+            amount = auction.getCurrentPrice();
+        }
+
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new AppException("Winning amount is invalid", HttpStatus.BAD_REQUEST);
+            throw new AppException("Payment amount is invalid", HttpStatus.BAD_REQUEST);
         }
 
-        // Check for existing pending payment to make this endpoint idempotent
         var existing = paymentRepository.findFirstByAuctionIdAndStatusOrderByCreatedAtDesc(auctionId, PaymentStatus.PENDING);
         String ipAddress = resolveClientIp(request);
         if (existing.isPresent()) {
@@ -100,7 +115,7 @@ public class PaymentServiceImpl implements PaymentService {
         return buildUrl(payment, ipAddress, request);
     }
 
-        private String buildUrl(Payment payment, String ipAddress, HttpServletRequest request) {
+    private String buildUrl(Payment payment, String ipAddress, HttpServletRequest request) {
         String createDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
         Map<String, String> params = new HashMap<>();
@@ -129,7 +144,7 @@ public class PaymentServiceImpl implements PaymentService {
         auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_INITIATED, "PAYMENT", payment.getId(),
             AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", payment.getVnpayTxnRef(), "amount", payment.getAmount()));
         return paymentUrl;
-        }
+    }
 
     @Override
     @Transactional
@@ -178,6 +193,15 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.setPaidAt(LocalDateTime.now());
                 paymentRepository.save(payment);
 
+                Auction auction = payment.getAuction();
+                if (auction.getStatus() == AuctionStatus.LIVE) {
+                    auction.setStatus(AuctionStatus.ENDED);            
+                    auction.setCurrentWinner(payment.getPayer());     
+                    auction.setCurrentPrice(payment.getAmount());     
+                    auctionRepository.save(auction);
+                    log.info("Auction {} ended immediately due to successful Buy Now payment by {}", auction.getId(), payment.getPayer().getEmail());
+                }
+
                 eventPublisher.publish(new PaymentCompletedEvent(
                         payment.getAuction().getId(),
                         payment.getPayer().getEmail(),
@@ -205,9 +229,9 @@ public class PaymentServiceImpl implements PaymentService {
         return toResponse(payment, null);
     }
 
-        @Override
-        @Transactional(readOnly = true)
-        public List<PaymentResponse> getMyPayments(String bidderEmail) {
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getMyPayments(String bidderEmail) {
         List<Auction> auctions = auctionRepository
             .findAllByCurrentWinner_EmailAndStatusOrderByEndTimeDesc(bidderEmail, AuctionStatus.ENDED);
         if (auctions.isEmpty()) {
@@ -242,28 +266,27 @@ public class PaymentServiceImpl implements PaymentService {
                 return toResponse(payment, null);
             })
             .collect(Collectors.toList());
-        }
+    }
 
     private PaymentResponse toResponse(Payment payment, String paymentUrl) {
         Auction auction = payment.getAuction();
         return PaymentResponse.builder()
             .auctionId(auction.getId())
-                .payerEmail(payment.getPayer().getEmail())
-                .amount(payment.getAmount())
-                .status(payment.getStatus())
+            .payerEmail(payment.getPayer().getEmail())
+            .amount(payment.getAmount())
+            .status(payment.getStatus())
             .auctionTitle(auction.getProductName())
             .thumbnailUrl(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())
             .biddingEndTime(auction.getEndTime() != null ? auction.getEndTime() : auction.getBiddingEndTime())
             .currentPrice(auction.getCurrentPrice())
             .startingPrice(auction.getStartingPrice())
-                .paymentUrl(paymentUrl)
-                .vnpayTransactionNo(payment.getVnpayTransactionNo())
-                .paidAt(payment.getPaidAt())
-                .createdAt(payment.getCreatedAt())
-                .updatedAt(payment.getUpdatedAt())
-                .build();
+            .paymentUrl(paymentUrl)
+            .vnpayTransactionNo(payment.getVnpayTransactionNo())
+            .paidAt(payment.getPaidAt())
+            .createdAt(payment.getCreatedAt())
+            .updatedAt(payment.getUpdatedAt())
+            .build();
     }
-
 
     private String buildQueryString(Map<String, String> params) {
         return params.entrySet().stream()
