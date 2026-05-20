@@ -26,6 +26,7 @@ import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,7 @@ public class BidExecutorImpl implements BidExecutor {
     private final RedisBidPublisher redisBidPublisher;
     private final LeaderboardService leaderboardService;
     private final AuctionProperties auctionProperties;
+    private final CacheManager cacheManager;
 
     @Override
     @Transactional
@@ -90,6 +92,11 @@ public class BidExecutorImpl implements BidExecutor {
         auction.setCurrentPrice(amount);
         auction.setCurrentWinner(bidder);
         applyAntiSniping(auction);
+
+        var cache = cacheManager.getCache("auctions");
+        if (cache != null) {
+            cache.evictIfPresent(auctionId + "-public");
+        }
 
         if (auction.getBuyNowPrice() != null && amount.compareTo(auction.getBuyNowPrice()) == 0) {
             log.info("Auction {} ended early due to BUY_NOW bid from {}", auction.getId(), bidder.getEmail());

@@ -16,6 +16,7 @@ public class AuctionResponse {
     private String productName;
     private String description;
     private BigDecimal startingPrice;
+    private BigDecimal currentPrice;
     private BigDecimal bidIncrement;
     private BigDecimal buyNowPrice;
     private AuctionStatus status;
@@ -44,4 +45,6 @@ public class AuctionResponse {
     // Images
     private List<AuctionImageResponse> images;
     private String thumbnailUrl;
+    private String winnerEmail;
+    private boolean isWinner;
 }

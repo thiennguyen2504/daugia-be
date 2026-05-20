@@ -14,6 +14,9 @@ public interface AuctionService {
     AuctionResponse create(AuctionCreateRequest request, List<MultipartFile> images, String sellerEmail) throws IOException;
     PageResponse<AuctionSummaryResponse> getMyAuctions(String sellerEmail, int page, int size);
 
+    // Bidder
+    PageResponse<AuctionSummaryResponse> getMyBidAuctions(String bidderEmail, int page, int size);
+
     // Public / Bidder
     PageResponse<AuctionSummaryResponse> searchPublic(AuctionFilterRequest filter, int page, int size);
     AuctionResponse getById(String id, String currentUserEmail, boolean isAdmin);

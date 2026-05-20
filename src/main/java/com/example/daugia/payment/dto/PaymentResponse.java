@@ -18,6 +18,11 @@ public class PaymentResponse {
     private String payerEmail;
     private BigDecimal amount;
     private PaymentStatus status;
+    private String auctionTitle;
+    private String thumbnailUrl;
+    private LocalDateTime biddingEndTime;
+    private BigDecimal currentPrice;
+    private BigDecimal startingPrice;
     private String paymentUrl;
     private String vnpayTransactionNo;
     private LocalDateTime paidAt;

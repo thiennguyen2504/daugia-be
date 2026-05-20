@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.CacheManager;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +31,10 @@ public class AuctionScheduler {
     private final AuctionRepository auctionRepository;
     private final DomainEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final CacheManager cacheManager;
 
-    @Scheduled(fixedRate = 60_000)
-    @SchedulerLock(name = "activateApprovedAuctions", lockAtMostFor = "PT55S", lockAtLeastFor = "PT10S")
+    @Scheduled(fixedRate = 10_000)
+    @SchedulerLock(name = "activateApprovedAuctions", lockAtMostFor = "PT9S", lockAtLeastFor = "PT2S")
     @Transactional
     public void activateApprovedAuctions() {
         log.debug("[SCHEDULER] Checking for auctions to activate...");
@@ -42,6 +44,10 @@ public class AuctionScheduler {
                 a.setStatus(AuctionStatus.ACTIVE);
                 auditService.log("SCHEDULER", AuditAction.AUCTION_ACTIVATED, "AUCTION", a.getId(),
                         AuditOutcome.SUCCESS, AuditJsonUtils.toJson("title", a.getProductName()));
+                var cache = cacheManager.getCache("auctions");
+                if (cache != null) {
+                    cache.evictIfPresent(a.getId() + "-public");
+                }
             });
             auctionRepository.saveAll(ready);
             List<String> ids = ready.stream().map(Auction::getId).collect(Collectors.toList());
@@ -49,8 +55,8 @@ public class AuctionScheduler {
         }
     }
 
-    @Scheduled(fixedRate = 60_000)
-    @SchedulerLock(name = "endActiveAuctions", lockAtMostFor = "PT55S", lockAtLeastFor = "PT10S")
+    @Scheduled(fixedRate = 10_000)
+    @SchedulerLock(name = "endActiveAuctions", lockAtMostFor = "PT9S", lockAtLeastFor = "PT2S")
     @Transactional
     public void endActiveAuctions() {
         log.debug("[SCHEDULER] Checking for auctions to end...");
@@ -74,6 +80,10 @@ public class AuctionScheduler {
                     a.getSeller().getFullName(),
                     winner == null ? null : winner.getEmail(),
                     winner == null ? null : winner.getFullName()));
+                var cache = cacheManager.getCache("auctions");
+                if (cache != null) {
+                    cache.evictIfPresent(a.getId() + "-public");
+                }
             });
             auctionRepository.saveAll(ended);
             List<String> ids = ended.stream().map(Auction::getId).collect(Collectors.toList());

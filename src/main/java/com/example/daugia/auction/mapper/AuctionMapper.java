@@ -18,11 +18,13 @@ public interface AuctionMapper {
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "endTime", source = "endTime")
     @Mapping(target = "extensionCount", source = "extensionCount")
+    @Mapping(target = "currentPrice", source = "currentPrice")
     @Mapping(target = "thumbnailUrl", expression = "java(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())")
     AuctionResponse toResponse(Auction auction);
 
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "endTime", source = "endTime")
+    @Mapping(target = "currentPrice", source = "currentPrice")
     @Mapping(target = "thumbnailUrl", expression = "java(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())")
     AuctionSummaryResponse toSummary(Auction auction);
 

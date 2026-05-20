@@ -41,6 +41,11 @@ public class PaymentController {
                 .payerEmail(payment.getPayerEmail())
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
+            .auctionTitle(payment.getAuctionTitle())
+            .thumbnailUrl(payment.getThumbnailUrl())
+            .biddingEndTime(payment.getBiddingEndTime())
+            .currentPrice(payment.getCurrentPrice())
+            .startingPrice(payment.getStartingPrice())
                 .paymentUrl(paymentUrl)
                 .vnpayTransactionNo(payment.getVnpayTransactionNo())
                 .paidAt(payment.getPaidAt())
@@ -57,6 +62,15 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success("Payment fetched",
                 paymentService.getByAuction(auctionId, jwt.getSubject())));
     }
+
+        @GetMapping("/my")
+        @PreAuthorize("hasRole('BIDDER')")
+        @Operation(summary = "Get payments for current bidder")
+        public ResponseEntity<ApiResponse<java.util.List<PaymentResponse>>> getMyPayments(
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(ApiResponse.success("Payments fetched",
+            paymentService.getMyPayments(jwt.getSubject())));
+        }
 
     @GetMapping("/vnpay-return")
     @Operation(summary = "Handle VNPAY return callback")

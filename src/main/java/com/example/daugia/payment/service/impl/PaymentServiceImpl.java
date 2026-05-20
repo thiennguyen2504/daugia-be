@@ -35,7 +35,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -203,12 +205,57 @@ public class PaymentServiceImpl implements PaymentService {
         return toResponse(payment, null);
     }
 
+        @Override
+        @Transactional(readOnly = true)
+        public List<PaymentResponse> getMyPayments(String bidderEmail) {
+        List<Auction> auctions = auctionRepository
+            .findAllByCurrentWinner_EmailAndStatusOrderByEndTimeDesc(bidderEmail, AuctionStatus.ENDED);
+        if (auctions.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> ids = auctions.stream().map(Auction::getId).toList();
+        Map<String, Auction> auctionById = auctionRepository.findAllWithImagesByIds(ids).stream()
+            .collect(Collectors.toMap(Auction::getId, Function.identity()));
+
+        return auctions.stream()
+            .map(auction -> auctionById.getOrDefault(auction.getId(), auction))
+            .map(auction -> {
+                Payment payment = paymentRepository.findFirstByAuctionIdOrderByCreatedAtDesc(auction.getId())
+                    .orElse(null);
+                if (payment == null) {
+                return PaymentResponse.builder()
+                    .auctionId(auction.getId())
+                    .payerEmail(bidderEmail)
+                    .amount(auction.getCurrentPrice())
+                    .status(PaymentStatus.PENDING)
+                    .auctionTitle(auction.getProductName())
+                    .thumbnailUrl(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())
+                    .biddingEndTime(auction.getEndTime() != null ? auction.getEndTime() : auction.getBiddingEndTime())
+                    .currentPrice(auction.getCurrentPrice())
+                    .startingPrice(auction.getStartingPrice())
+                    .createdAt(auction.getUpdatedAt())
+                    .updatedAt(auction.getUpdatedAt())
+                    .build();
+                }
+
+                return toResponse(payment, null);
+            })
+            .collect(Collectors.toList());
+        }
+
     private PaymentResponse toResponse(Payment payment, String paymentUrl) {
+        Auction auction = payment.getAuction();
         return PaymentResponse.builder()
-                .auctionId(payment.getAuction().getId())
+            .auctionId(auction.getId())
                 .payerEmail(payment.getPayer().getEmail())
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
+            .auctionTitle(auction.getProductName())
+            .thumbnailUrl(auction.getImages().isEmpty() ? null : auction.getImages().get(0).getImageUrl())
+            .biddingEndTime(auction.getEndTime() != null ? auction.getEndTime() : auction.getBiddingEndTime())
+            .currentPrice(auction.getCurrentPrice())
+            .startingPrice(auction.getStartingPrice())
                 .paymentUrl(paymentUrl)
                 .vnpayTransactionNo(payment.getVnpayTransactionNo())
                 .paidAt(payment.getPaidAt())

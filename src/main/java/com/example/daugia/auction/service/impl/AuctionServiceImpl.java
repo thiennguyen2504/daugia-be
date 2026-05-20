@@ -9,6 +9,7 @@ import com.example.daugia.auction.repository.AuctionImageRepository;
 import com.example.daugia.auction.repository.AuctionRepository;
 import com.example.daugia.auction.service.AuctionService;
 import com.example.daugia.auction.specification.AuctionSpecification;
+import com.example.daugia.bidding.util.EmailMaskingUtils;
 import com.example.daugia.category.entity.Category;
 import com.example.daugia.category.repository.CategoryRepository;
 import com.example.daugia.common.dto.PageResponse;
@@ -26,6 +27,7 @@ import com.example.daugia.common.storage.StorageService;
 import com.example.daugia.common.storage.UploadResult;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
+import com.example.daugia.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -64,6 +66,7 @@ public class AuctionServiceImpl implements AuctionService {
     private final StorageService         storageService;
     private final DomainEventPublisher   eventPublisher;
     private final AuditService           auditService;
+    private final PaymentRepository      paymentRepository;
 
     // ─── SELLER ───────────────────────────────────────────────────────────────
 
@@ -142,6 +145,14 @@ public class AuctionServiceImpl implements AuctionService {
         return toSummaryPage(resultPage);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AuctionSummaryResponse> getMyBidAuctions(String bidderEmail, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Auction> resultPage = auctionRepository.findDistinctByBidderEmail(bidderEmail, pageable);
+        return toBidderSummaryPage(resultPage, bidderEmail);
+    }
+
     // ─── PUBLIC / BIDDER ──────────────────────────────────────────────────────
 
     @Override
@@ -168,11 +179,18 @@ public class AuctionServiceImpl implements AuctionService {
             return auctionMapper.toResponse(auction);
         }
 
+        if (currentUserEmail != null) {
+            return enrichAuctionResponse(auctionMapper.toResponse(auction), auction, currentUserEmail);
+        }
+
         // Public / bidder: only APPROVED, ACTIVE, ENDED — use cached public path
         if (auction.getStatus() == AuctionStatus.APPROVED
-                || auction.getStatus() == AuctionStatus.ACTIVE
                 || auction.getStatus() == AuctionStatus.ENDED) {
             return getByIdPublicCached(id);
+        }
+
+        if (auction.getStatus() == AuctionStatus.ACTIVE) {
+            return auctionMapper.toResponse(auction);
         }
 
         throw new ResourceNotFoundException("Auction not found");
@@ -315,5 +333,64 @@ public class AuctionServiceImpl implements AuctionService {
                 .totalPages(page.getTotalPages())
                 .last(page.isLast())
                 .build();
+    }
+
+    private PageResponse<AuctionSummaryResponse> toBidderSummaryPage(Page<Auction> page, String bidderEmail) {
+        List<String> ids = page.getContent().stream()
+                .map(Auction::getId)
+                .toList();
+        if (ids.isEmpty()) {
+            return PageResponse.<AuctionSummaryResponse>builder()
+                    .content(List.of())
+                    .pageNumber(page.getNumber())
+                    .pageSize(page.getSize())
+                    .totalElements(page.getTotalElements())
+                    .totalPages(page.getTotalPages())
+                    .last(page.isLast())
+                    .build();
+        }
+
+        Map<String, Auction> auctionById = auctionRepository.findAllWithImagesByIds(ids).stream()
+                .collect(Collectors.toMap(Auction::getId, Function.identity()));
+        List<AuctionSummaryResponse> content = page.getContent().stream()
+                .map(auction -> auctionById.getOrDefault(auction.getId(), auction))
+                .map(auction -> applyBidderSummary(auctionMapper.toSummary(auction), auction, bidderEmail))
+                .toList();
+
+        return PageResponse.<AuctionSummaryResponse>builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+    }
+
+    private AuctionSummaryResponse applyBidderSummary(AuctionSummaryResponse summary, Auction auction, String bidderEmail) {
+        User winner = auction.getCurrentWinner();
+        if (winner != null && winner.getEmail() != null) {
+            summary.setWinnerEmail(EmailMaskingUtils.mask(winner.getEmail()));
+            summary.setWinner(winner.getEmail().equalsIgnoreCase(bidderEmail));
+        } else {
+            summary.setWinner(false);
+        }
+
+        paymentRepository.findFirstByAuctionIdOrderByCreatedAtDesc(auction.getId())
+                .ifPresent(payment -> summary.setPaymentStatus(payment.getStatus().name()));
+
+        return summary;
+    }
+
+    private AuctionResponse enrichAuctionResponse(AuctionResponse response, Auction auction, String bidderEmail) {
+        User winner = auction.getCurrentWinner();
+        if (winner != null && winner.getEmail() != null) {
+            response.setWinnerEmail(EmailMaskingUtils.mask(winner.getEmail()));
+            response.setWinner(winner.getEmail().equalsIgnoreCase(bidderEmail));
+        } else {
+            response.setWinner(false);
+        }
+        response.setCurrentPrice(auction.getCurrentPrice());
+        return response;
     }
 }

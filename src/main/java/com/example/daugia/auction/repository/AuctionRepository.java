@@ -21,6 +21,11 @@ public interface AuctionRepository extends JpaRepository<Auction, String>, JpaSp
 
     Page<Auction> findAllBySeller_Id(String sellerId, Pageable pageable);
 
+    @Query("SELECT DISTINCT a FROM Auction a JOIN Bid b ON b.auction = a WHERE b.bidder.email = :email")
+    Page<Auction> findDistinctByBidderEmail(@Param("email") String email, Pageable pageable);
+
+    List<Auction> findAllByCurrentWinner_EmailAndStatusOrderByEndTimeDesc(String email, AuctionStatus status);
+
     @Query("SELECT a FROM Auction a WHERE a.status = 'APPROVED' AND a.biddingStartTime <= :now")
     List<Auction> findApprovedReadyToActivate(@Param("now") LocalDateTime now);
 

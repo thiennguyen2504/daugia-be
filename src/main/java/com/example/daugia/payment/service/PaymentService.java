@@ -9,4 +9,5 @@ public interface PaymentService {
     String createPaymentUrl(String auctionId, String winnerEmail, HttpServletRequest request);
     PaymentResponse handleCallback(Map<String, String> params);
     PaymentResponse getByAuction(String auctionId, String userEmail);
+    java.util.List<PaymentResponse> getMyPayments(String bidderEmail);
 }

@@ -14,6 +14,7 @@ public class AuctionSummaryResponse {
     private String id;
     private String productName;
     private BigDecimal startingPrice;
+    private BigDecimal currentPrice;
     private BigDecimal buyNowPrice;
     private AuctionStatus status;
     private LocalDateTime biddingStartTime;
@@ -24,5 +25,8 @@ public class AuctionSummaryResponse {
     private LocalDateTime endTime;
     private String categoryName;
     private String thumbnailUrl;
+    private String winnerEmail;
+    private String paymentStatus;
+    private boolean isWinner;
     private LocalDateTime createdAt;
 }

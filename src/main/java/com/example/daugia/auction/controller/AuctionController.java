@@ -1,6 +1,7 @@
 package com.example.daugia.auction.controller;
 
 import com.example.daugia.auction.dto.*;
+import com.example.daugia.auction.entity.AuctionStatus;
 import com.example.daugia.auction.service.AuctionService;
 import com.example.daugia.common.dto.ApiResponse;
 import com.example.daugia.common.dto.PageResponse;
@@ -38,6 +39,7 @@ public class AuctionController {
             @RequestParam(defaultValue = "12")    int size,
             @RequestParam(required = false)       String search,
             @RequestParam(required = false)       String categoryId,
+            @RequestParam(required = false)       AuctionStatus status,
             @RequestParam(required = false)       BigDecimal minPrice,
             @RequestParam(required = false)       BigDecimal maxPrice,
             @RequestParam(required = false)       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startFrom,
@@ -47,6 +49,7 @@ public class AuctionController {
 
         AuctionFilterRequest filter = AuctionFilterRequest.builder()
                 .search(search).categoryId(categoryId)
+                .status(status)
                 .minPrice(minPrice).maxPrice(maxPrice)
                 .startFrom(startFrom).startTo(startTo)
                 .sortBy(sortBy).sortDir(sortDir)
@@ -87,6 +90,16 @@ public class AuctionController {
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("My auctions fetched",
                 auctionService.getMyAuctions(jwt.getSubject(), page, size)));
+    }
+
+    @GetMapping("/my-bids")
+    @PreAuthorize("hasRole('BIDDER')")
+    public ResponseEntity<ApiResponse<PageResponse<AuctionSummaryResponse>>> getMyBidAuctions(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "12") int size,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(ApiResponse.success("My bid auctions fetched",
+                auctionService.getMyBidAuctions(jwt.getSubject(), page, size)));
     }
 
 }
