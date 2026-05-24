@@ -9,6 +9,10 @@ import com.example.daugia.common.audit.AuditOutcome;
 import com.example.daugia.common.audit.AuditService;
 import com.example.daugia.common.event.AuctionEndedEvent;
 import com.example.daugia.common.event.DomainEventPublisher;
+import com.example.daugia.payment.entity.Payment;
+import com.example.daugia.payment.entity.PaymentStatus;
+import com.example.daugia.payment.repository.PaymentRepository;
+import com.example.daugia.payment.service.BuyNowReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -32,6 +36,8 @@ public class AuctionScheduler {
     private final DomainEventPublisher eventPublisher;
     private final AuditService auditService;
     private final CacheManager cacheManager;
+    private final PaymentRepository paymentRepository;
+    private final BuyNowReservationService buyNowReservationService;
 
     @Scheduled(fixedRate = 10_000)
     @SchedulerLock(name = "activateApprovedAuctions", lockAtMostFor = "PT9S", lockAtLeastFor = "PT2S")
@@ -88,6 +94,27 @@ public class AuctionScheduler {
             auctionRepository.saveAll(ended);
             List<String> ids = ended.stream().map(Auction::getId).collect(Collectors.toList());
             log.info("[SCHEDULER] Ended {} auctions: {}", ended.size(), ids);
+        }
+    }
+
+    @Scheduled(fixedRate = 60_000)
+    @SchedulerLock(name = "cleanExpiredReservations", lockAtMostFor = "PT59S", lockAtLeastFor = "PT2S")
+    @Transactional
+    public void cleanExpiredReservations() {
+        log.debug("[SCHEDULER] Checking for expired Buy Now reservations...");
+        // Get all pending payments
+        List<Payment> pendingPayments = paymentRepository.findAllByStatus(PaymentStatus.PENDING);
+        for (Payment payment : pendingPayments) {
+            Auction auction = payment.getAuction();
+            if (auction.getStatus() == AuctionStatus.ACTIVE || auction.getStatus() == AuctionStatus.LIVE) {
+                if (buyNowReservationService.getReservationHolder(auction.getId()).isEmpty()) {
+                    payment.setStatus(PaymentStatus.FAILED);
+                    paymentRepository.save(payment);
+                    auditService.log("SCHEDULER", AuditAction.PAYMENT_FAILED, "PAYMENT", payment.getId(),
+                            AuditOutcome.FAILURE, AuditJsonUtils.toJson("reason", "Reservation expired"));
+                    log.info("[SCHEDULER] Marked pending payment {} as FAILED due to expired reservation", payment.getId());
+                }
+            }
         }
     }
 }

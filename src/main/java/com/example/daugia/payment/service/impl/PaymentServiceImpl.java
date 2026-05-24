@@ -12,6 +12,7 @@ import com.example.daugia.payment.dto.PaymentResponse;
 import com.example.daugia.payment.entity.Payment;
 import com.example.daugia.payment.entity.PaymentStatus;
 import com.example.daugia.payment.repository.PaymentRepository;
+import com.example.daugia.payment.service.BuyNowReservationService;
 import com.example.daugia.payment.service.PaymentService;
 import com.example.daugia.user.entity.User;
 import com.example.daugia.user.repository.UserRepository;
@@ -38,6 +39,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -60,6 +62,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final VnpayProperties vnpayProperties;
     private final DomainEventPublisher eventPublisher;
     private final AuditService auditService;
+    private final BuyNowReservationService buyNowReservationService;
 
     @Override
     @Transactional
@@ -67,7 +70,7 @@ public class PaymentServiceImpl implements PaymentService {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         
-        if (auction.getStatus() != AuctionStatus.ENDED && (auction.getStatus() != AuctionStatus.LIVE || auction.getStatus() != AuctionStatus.ACTIVE )) {
+        if (auction.getStatus() != AuctionStatus.ENDED && auction.getStatus() != AuctionStatus.LIVE && auction.getStatus() != AuctionStatus.ACTIVE) {
             throw new AppException("Auction status is invalid for payment", HttpStatus.BAD_REQUEST);
         }
 
@@ -98,9 +101,26 @@ public class PaymentServiceImpl implements PaymentService {
 
         var existing = paymentRepository.findFirstByAuctionIdAndStatusOrderByCreatedAtDesc(auctionId, PaymentStatus.PENDING);
         String ipAddress = resolveClientIp(request);
+
+        boolean reservationCreated = false;
+        if (auction.getStatus() == AuctionStatus.LIVE || auction.getStatus() == AuctionStatus.ACTIVE) {
+            Optional<String> holder = buyNowReservationService.getReservationHolder(auctionId);
+            if (holder.isPresent()) {
+                if (!holder.get().equalsIgnoreCase(winnerEmail)) {
+                    throw new AppException("Another buyer is currently completing this purchase. Please wait.", HttpStatus.CONFLICT);
+                }
+            } else {
+                buyNowReservationService.createReservation(auctionId, winnerEmail, java.time.Duration.ofSeconds(300));
+                reservationCreated = true;
+            }
+        }
+
         if (existing.isPresent()) {
-            log.info("Reusing existing pending payment: auctionId={} txnRef={}", auctionId, existing.get().getVnpayTxnRef());
-            return buildUrl(existing.get(), ipAddress, request);
+            Payment p = existing.get();
+            p.setVnpayTxnRef(generateTxnRef());
+            paymentRepository.save(p);
+            log.info("Reusing existing pending payment: auctionId={} new txnRef={}", auctionId, p.getVnpayTxnRef());
+            return buildUrl(p, ipAddress, request, reservationCreated);
         }
 
         String txnRef = generateTxnRef();
@@ -112,10 +132,10 @@ public class PaymentServiceImpl implements PaymentService {
             .vnpayTxnRef(txnRef)
             .build());
 
-        return buildUrl(payment, ipAddress, request);
+        return buildUrl(payment, ipAddress, request, reservationCreated);
     }
 
-    private String buildUrl(Payment payment, String ipAddress, HttpServletRequest request) {
+    private String buildUrl(Payment payment, String ipAddress, HttpServletRequest request, boolean reservationCreated) {
         String createDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
         Map<String, String> params = new HashMap<>();
@@ -142,7 +162,7 @@ public class PaymentServiceImpl implements PaymentService {
         String paymentUrl = vnpayProperties.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
         log.info("Payment URL built: auctionId={} txnRef={}", payment.getAuction().getId(), payment.getVnpayTxnRef());
         auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_INITIATED, "PAYMENT", payment.getId(),
-            AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", payment.getVnpayTxnRef(), "amount", payment.getAmount()));
+            AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", payment.getVnpayTxnRef(), "amount", payment.getAmount(), "reservationCreated", reservationCreated));
         return paymentUrl;
     }
 
@@ -178,16 +198,18 @@ public class PaymentServiceImpl implements PaymentService {
             if (secureHash == null || !secureHash.equalsIgnoreCase(computedHash) || !"00".equals(responseCode)) {
                 String reason = (secureHash == null || !secureHash.equalsIgnoreCase(computedHash)) ? "Hash mismatch" : "Failed response code " + responseCode;
                 log.warn("Payment callback failed: txnRef={} reason={}", txnRef, reason);
+                buyNowReservationService.clearReservation(payment.getAuction().getId());
                 if (payment.getStatus() != PaymentStatus.PAID) {
                     payment.setStatus(PaymentStatus.FAILED);
                 }
                 paymentRepository.save(payment);
                 auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_FAILED, "PAYMENT", payment.getId(),
-                        AuditOutcome.FAILURE, null, AuditJsonUtils.toJson("txnRef", txnRef, "reason", reason));
+                        AuditOutcome.FAILURE, AuditJsonUtils.toJson("txnRef", txnRef, "reason", reason));
                 return toResponse(payment, null);
             }
 
             if (payment.getStatus() != PaymentStatus.PAID) {
+                buyNowReservationService.clearReservation(payment.getAuction().getId());
                 payment.setStatus(PaymentStatus.PAID);
                 payment.setVnpayTransactionNo(transactionNo);
                 payment.setPaidAt(LocalDateTime.now());
@@ -207,7 +229,7 @@ public class PaymentServiceImpl implements PaymentService {
                         payment.getPayer().getEmail(),
                         payment.getAmount()));
                 auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_SUCCEEDED, "PAYMENT", payment.getId(),
-                        AuditOutcome.SUCCESS, null, AuditJsonUtils.toJson("txnRef", txnRef, "transactionNo", transactionNo));
+                        AuditOutcome.SUCCESS, AuditJsonUtils.toJson("txnRef", txnRef, "transactionNo", transactionNo));
             }
 
             return toResponse(payment, null);

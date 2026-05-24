@@ -9,4 +9,5 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     Optional<Payment> findByVnpayTxnRef(String vnpayTxnRef);
     Optional<Payment> findFirstByAuctionIdOrderByCreatedAtDesc(String auctionId);
     Optional<Payment> findFirstByAuctionIdAndStatusOrderByCreatedAtDesc(String auctionId, com.example.daugia.payment.entity.PaymentStatus status);
+    java.util.List<Payment> findAllByStatus(com.example.daugia.payment.entity.PaymentStatus status);
 }

@@ -1,7 +1,9 @@
 package com.example.daugia.payment.controller;
 
 import com.example.daugia.common.dto.ApiResponse;
+import com.example.daugia.payment.dto.BuyNowReservationStatusResponse;
 import com.example.daugia.payment.dto.PaymentResponse;
+import com.example.daugia.payment.service.BuyNowReservationService;
 import com.example.daugia.payment.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +29,7 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final BuyNowReservationService buyNowReservationService;
 
     @PostMapping("/auction/{auctionId}/create")
     @PreAuthorize("hasRole('BIDDER')")
@@ -61,6 +64,42 @@ public class PaymentController {
                                                                      @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Payment fetched",
                 paymentService.getByAuction(auctionId, jwt.getSubject())));
+    }
+
+    @GetMapping("/auction/{auctionId}/reservation")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get reservation status for Buy Now")
+    public ResponseEntity<ApiResponse<BuyNowReservationStatusResponse>> getReservationStatus(
+            @PathVariable String auctionId,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request) {
+
+        java.util.Optional<String> holder = buyNowReservationService.getReservationHolder(auctionId);
+        if (holder.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success("No reservation",
+                    BuyNowReservationStatusResponse.builder().hasReservation(false).build()));
+        }
+
+        String email = holder.get();
+        boolean isOwner = email.equalsIgnoreCase(jwt.getSubject());
+        Long remainingSeconds = buyNowReservationService.getRemainingSeconds(auctionId).orElse(null);
+        String paymentUrl = null;
+
+        if (isOwner) {
+            try {
+                paymentUrl = paymentService.createPaymentUrl(auctionId, email, request);
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("Reservation status",
+                BuyNowReservationStatusResponse.builder()
+                        .hasReservation(true)
+                        .isOwner(isOwner)
+                        .remainingSeconds(remainingSeconds)
+                        .paymentUrl(paymentUrl)
+                        .build()));
     }
 
         @GetMapping("/my")
