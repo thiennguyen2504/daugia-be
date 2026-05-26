@@ -160,6 +160,7 @@ public class PaymentServiceImpl implements PaymentService {
         String secureHash = hmacSHA512(vnpayProperties.getHashSecret(), query);
 
         String paymentUrl = vnpayProperties.getPayUrl() + "?" + query + "&vnp_SecureHash=" + secureHash;
+        // Log only safe fields — the full URL contains the HMAC hash and must never be logged
         log.info("Payment URL built: auctionId={} txnRef={}", payment.getAuction().getId(), payment.getVnpayTxnRef());
         auditService.log(payment.getPayer().getEmail(), AuditAction.PAYMENT_INITIATED, "PAYMENT", payment.getId(),
             AuditOutcome.SUCCESS, request, AuditJsonUtils.toJson("txnRef", payment.getVnpayTxnRef(), "amount", payment.getAmount(), "reservationCreated", reservationCreated));

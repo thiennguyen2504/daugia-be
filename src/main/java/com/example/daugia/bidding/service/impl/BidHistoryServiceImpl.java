@@ -7,6 +7,7 @@ import com.example.daugia.bidding.repository.BidHistoryRepository;
 import com.example.daugia.bidding.service.BidHistoryService;
 import com.example.daugia.bidding.util.EmailMaskingUtils;
 import com.example.daugia.common.dto.PageResponse;
+import com.example.daugia.common.logging.LogSampler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +42,10 @@ public class BidHistoryServiceImpl implements BidHistoryService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<BidHistoryEntryResponse> getHistory(String auctionId, int page, int size) {
+        // 10% sampling — high-frequency pagination, low diagnostic value at full rate
+        if (LogSampler.shouldLog("bid.history.read", 0.10)) {
+            log.debug("getHistory called: auctionId={} page={} size={}", auctionId, page, size);
+        }
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "bidTime"));
         return PageResponse.from(bidHistoryRepository.findAllByAuctionIdOrderByBidTimeDesc(auctionId, pageable)
                 .map(entry -> BidHistoryEntryResponse.builder()

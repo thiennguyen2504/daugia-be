@@ -75,7 +75,7 @@ public class AutoBidServiceImpl implements AutoBidService {
     @Async("domainEventExecutor")
     @Transactional
     public void processAutoBidsForAuction(String auctionId, String excludeBidderId) {
-        log.debug("Processing auto-bids for auctionId={}, excludeBidderId={}", auctionId, excludeBidderId);
+        log.debug("Processing auto-bids for auctionId={} excludeBidderId={}", auctionId, excludeBidderId);
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         BigDecimal currentPrice = auction.getCurrentPrice() == null ? auction.getStartingPrice() : auction.getCurrentPrice();

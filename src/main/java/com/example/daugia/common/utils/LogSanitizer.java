@@ -1,26 +1,33 @@
 package com.example.daugia.common.utils;
 
-import com.example.daugia.bidding.util.EmailMaskingUtils;
+import com.example.daugia.common.logging.SensitiveDataRedactor;
 
+/**
+ * Backward-compatibility facade over {@link SensitiveDataRedactor}.
+ *
+ * <p>Existing callers continue to compile with zero changes.
+ * All logic now lives in {@link SensitiveDataRedactor} — do not add new methods here;
+ * add them there and add a delegate here only if absolutely necessary.
+ *
+ * @deprecated Prefer calling {@link SensitiveDataRedactor} directly in new code.
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 public class LogSanitizer {
 
+    /** @see SensitiveDataRedactor#maskEmail(String) */
     public static String maskEmail(String email) {
-        if (email == null) return null;
-        return EmailMaskingUtils.mask(email);
+        return SensitiveDataRedactor.maskEmail(email);
     }
 
+    /** @see SensitiveDataRedactor#maskToken(String) */
     public static String maskToken(String token) {
-        if (token == null) return null;
-        if (token.length() <= 8) return "***";
-        return "..." + token.substring(token.length() - 8);
+        return SensitiveDataRedactor.maskToken(token);
     }
 
+    /** @see SensitiveDataRedactor#maskIp(String) */
     public static String maskIp(String ip) {
-        if (ip == null) return null;
-        String[] parts = ip.split("\\.");
-        if (parts.length == 4) {
-            return parts[0] + "." + parts[1] + ".*.*";
-        }
-        return ip; // For IPv6 or unknown format, maybe return as is or mask fully.
+        return SensitiveDataRedactor.maskIp(ip);
     }
+
+    private LogSanitizer() {}
 }

@@ -32,7 +32,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendEmail(String to, String subject, String content) {
         try {
             sendHtmlEmail(to, subject, content);
-            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+            log.debug("Email sent: to={} subject={}", LogSanitizer.maskEmail(to), subject);
         } catch (Exception e) {
             log.error("Failed to send email to {}", LogSanitizer.maskEmail(to), e);
             throw e;
@@ -48,12 +48,12 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>Your OTP for " + purpose + " is:</p>"
                 + "<div style='font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px 20px;background:#f4f6f8;display:inline-block;border-radius:10px;'>"
                 + otp + "</div>"
-                + "<p style='margin-top:16px'>This code expires in 10 minutes.</p>"
+                + "<p style='margin-top:16px'>This code expires in 3 minutes.</p>"
                 + "<p>If you did not request this, you can ignore this email.</p>"
                 + "</div>";
         try {
             sendHtmlEmail(to, subject, content);
-            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+            log.debug("Email sent: to={} subject={}", LogSanitizer.maskEmail(to), subject);
         } catch (Exception e) {
             log.error("Failed to send OTP email to {}", LogSanitizer.maskEmail(to), e);
             throw e;
@@ -77,7 +77,7 @@ public class EmailServiceImpl implements EmailService {
                 + "</div>";
         try {
             sendHtmlEmail(to, subject, content);
-            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+            log.debug("Email sent: to={} subject={}", LogSanitizer.maskEmail(to), subject);
         } catch (Exception e) {
             log.error("Failed to send Auction Approved email to {}", LogSanitizer.maskEmail(to), e);
             throw e;
@@ -99,7 +99,7 @@ public class EmailServiceImpl implements EmailService {
                 + "</div>";
         try {
             sendHtmlEmail(to, subject, content);
-            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+            log.debug("Email sent: to={} subject={}", LogSanitizer.maskEmail(to), subject);
         } catch (Exception e) {
             log.error("Failed to send Auction Rejected email to {}", LogSanitizer.maskEmail(to), e);
             throw e;
@@ -117,7 +117,7 @@ public class EmailServiceImpl implements EmailService {
                 + "</div>";
         try {
             sendHtmlEmail(to, subject, content);
-            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+            log.debug("Email sent: to={} subject={}", LogSanitizer.maskEmail(to), subject);
         } catch (Exception e) {
             log.error("Failed to send Auction Winner email to {}", LogSanitizer.maskEmail(to), e);
             throw e;
@@ -135,7 +135,7 @@ public class EmailServiceImpl implements EmailService {
                 + "</div>";
         try {
             sendHtmlEmail(to, subject, content);
-            log.info("Email sent successfully: to={}, subject={}", LogSanitizer.maskEmail(to), subject);
+            log.debug("Email sent: to={} subject={}", LogSanitizer.maskEmail(to), subject);
         } catch (Exception e) {
             log.error("Failed to send Auction Sold email to {}", LogSanitizer.maskEmail(to), e);
             throw e;

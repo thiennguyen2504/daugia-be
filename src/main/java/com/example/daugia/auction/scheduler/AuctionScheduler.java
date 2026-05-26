@@ -112,7 +112,7 @@ public class AuctionScheduler {
                     paymentRepository.save(payment);
                     auditService.log("SCHEDULER", AuditAction.PAYMENT_FAILED, "PAYMENT", payment.getId(),
                             AuditOutcome.FAILURE, AuditJsonUtils.toJson("reason", "Reservation expired"));
-                    log.info("[SCHEDULER] Marked pending payment {} as FAILED due to expired reservation", payment.getId());
+                    log.debug("[SCHEDULER] Marked pending payment {} as FAILED due to expired reservation", payment.getId());
                 }
             }
         }

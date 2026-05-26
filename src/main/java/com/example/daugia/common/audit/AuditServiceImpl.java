@@ -51,7 +51,8 @@ public class AuditServiceImpl implements AuditService {
     public void log(String actor, AuditAction action, String entityType, String entityId,
                     AuditOutcome outcome, String detail) {
         String resolvedActor = normalizeActor(actor);
-        String requestId = MDC.get("requestId");
+        // Prefer explicit requestId; fall back to traceId in MDC (canonical field name)
+        String requestId = MDC.get("requestId") != null ? MDC.get("requestId") : MDC.get("traceId");
 
         auditLogRepository.save(AuditLog.builder()
                 .actor(resolvedActor)
@@ -63,8 +64,10 @@ public class AuditServiceImpl implements AuditService {
                 .requestId(requestId)
                 .build());
 
-        log.info("AUDIT action={} actor={} entity={}/{} outcome={} ip={} requestId={} detail={}",
-                action, resolvedActor, entityType, entityId, outcome, null, requestId, detail);
+        // AUDIT_FILE already captures this via the com.example.daugia.common.audit logger;
+        // use DEBUG here to avoid duplicating the line in application.log at INFO level.
+        log.debug("AUDIT action={} actor={} entity={}/{} outcome={} requestId={} detail={}",
+                action, resolvedActor, entityType, entityId, outcome, requestId, detail);
     }
 
     @Override
@@ -113,8 +116,14 @@ public class AuditServiceImpl implements AuditService {
             if (requestId != null) {
                 return requestId.toString();
             }
+            // Also check traceId attribute (set by refactored RequestLoggingFilter)
+            Object traceId = request.getAttribute("traceId");
+            if (traceId != null) {
+                return traceId.toString();
+            }
         }
-        return MDC.get("requestId");
+        String fromMdc = MDC.get("requestId");
+        return fromMdc != null ? fromMdc : MDC.get("traceId");
     }
 
     private String resolveIpAddress(HttpServletRequest request) {

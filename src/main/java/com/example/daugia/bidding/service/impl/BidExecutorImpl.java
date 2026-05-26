@@ -116,7 +116,7 @@ public class BidExecutorImpl implements BidExecutor {
             AuditOutcome.SUCCESS,
             AuditJsonUtils.toJson("auctionId", auctionId, "amount", amount));
             
-        log.info("Bid accepted: auctionId={} bidId={} newPrice={} endTime={}", auctionId, bid.getId(), amount, auction.getEndTime());
+        log.debug("Bid accepted: auctionId={} bidId={} newPrice={} endTime={}", auctionId, bid.getId(), amount, auction.getEndTime());
         BidResponse response = toAcceptedResponse(auction, bid, bidder.getEmail());
         leaderboardService.updateLeaderboard(auctionId, bidder.getEmail(), amount, auction.getEndTime());
         redisBidPublisher.publish(response);

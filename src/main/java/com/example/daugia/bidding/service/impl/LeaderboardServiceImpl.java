@@ -3,6 +3,7 @@ package com.example.daugia.bidding.service.impl;
 import com.example.daugia.bidding.dto.LeaderboardEntryResponse;
 import com.example.daugia.bidding.service.LeaderboardService;
 import com.example.daugia.bidding.util.EmailMaskingUtils;
+import com.example.daugia.common.logging.LogSampler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.RedisConnectionFailureException;
@@ -42,6 +43,10 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             var tuples = stringRedisTemplate.opsForZSet().reverseRangeWithScores(key(auctionId), 0, 9);
             if (tuples == null) {
                 return List.of();
+            }
+            // 5% sampling — high-frequency read, low diagnostic value at full rate
+            if (LogSampler.shouldLog("leaderboard.read", 0.05)) {
+                log.debug("Leaderboard fetched: auctionId={} entries={}", auctionId, tuples.size());
             }
             return tuples.stream()
                     .map(this::toResponse)

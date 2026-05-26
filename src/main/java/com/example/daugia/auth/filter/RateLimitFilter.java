@@ -15,7 +15,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
 
 @Component
 @RequiredArgsConstructor
@@ -47,7 +46,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         if (limited) {
-            log.warn("Rate limit exceeded for clientIp={}, path={}, timestamp={}", LogSanitizer.maskIp(clientIp), path, LocalDateTime.now());
+            log.warn("Rate limit exceeded: clientIp={} path={} traceId={}",
+                    LogSanitizer.maskIp(clientIp), path, org.slf4j.MDC.get("traceId"));
             response.setStatus(429);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(RATE_LIMIT_BODY);
