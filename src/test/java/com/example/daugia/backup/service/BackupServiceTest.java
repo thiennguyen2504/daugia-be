@@ -7,7 +7,6 @@ import com.example.daugia.backup.entity.BackupType;
 import com.example.daugia.backup.executor.BackupProcessExecutor;
 import com.example.daugia.backup.executor.FullBackupExecutor;
 import com.example.daugia.backup.executor.ProcessResult;
-import com.example.daugia.backup.executor.WalBackupExecutor;
 import com.example.daugia.backup.properties.BackupProperties;
 import com.example.daugia.backup.repository.BackupRecordRepository;
 import com.example.daugia.backup.storage.BackupStorageProvider;
@@ -54,8 +53,7 @@ class BackupServiceTest {
     void setUp() throws Exception {
         BackupProperties properties = new BackupProperties(true,
                 new BackupProperties.Full("0 0 2 * * SUN", "/backups/full"),
-                new BackupProperties.Wal("/backups/wal"),
-                new BackupProperties.Retention(4, 14, 86_400_000L),
+                new BackupProperties.Retention(4, 86_400_000L),
                 java.util.List.of("admin@example.com"),
                 false);
 
@@ -65,7 +63,6 @@ class BackupServiceTest {
         dataSourceProperties.setPassword("db_password");
 
         FullBackupExecutor fullBackupExecutor = new FullBackupExecutor(storageProvider, processExecutor);
-        WalBackupExecutor walBackupExecutor = new WalBackupExecutor(storageProvider, processExecutor);
         Executor executor = Runnable::run;
 
         backupService = new BackupServiceImpl(
@@ -73,7 +70,6 @@ class BackupServiceTest {
                 storageProvider,
                 processExecutor,
                 fullBackupExecutor,
-                walBackupExecutor,
                 properties,
                 auditService,
                 emailService,

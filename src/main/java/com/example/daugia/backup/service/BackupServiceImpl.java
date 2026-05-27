@@ -1,7 +1,6 @@
 package com.example.daugia.backup.service;
 
 import com.example.daugia.backup.command.FullRestoreCommand;
-import com.example.daugia.backup.command.PointInTimeRestoreCommand;
 import com.example.daugia.backup.command.RestoreCommand;
 import com.example.daugia.backup.dto.BackupResponse;
 import com.example.daugia.backup.dto.BackupStatusResponse;
@@ -18,7 +17,6 @@ import com.example.daugia.backup.exception.BackupException;
 import com.example.daugia.backup.executor.BackupExecutionResult;
 import com.example.daugia.backup.executor.BackupProcessExecutor;
 import com.example.daugia.backup.executor.FullBackupExecutor;
-import com.example.daugia.backup.executor.WalBackupExecutor;
 import com.example.daugia.backup.properties.BackupProperties;
 import com.example.daugia.backup.repository.BackupRecordRepository;
 import com.example.daugia.backup.storage.BackupStorageProvider;
@@ -67,7 +65,6 @@ public class BackupServiceImpl implements BackupService {
     private final BackupStorageProvider storageProvider;
     private final BackupProcessExecutor processExecutor;
     private final FullBackupExecutor fullBackupExecutor;
-    private final WalBackupExecutor walBackupExecutor;
     private final BackupProperties backupProperties;
     private final AuditService auditService;
     private final EmailService emailService;
@@ -86,13 +83,7 @@ public class BackupServiceImpl implements BackupService {
         return record;
     }
 
-    @Override
-    public BackupRecord triggerWalArchive(String triggeredBy) {
-        BackupRecord record = createInitialRecord(BackupType.WAL, triggeredBy);
-        logAudit(triggeredBy, AuditAction.BACKUP_TRIGGERED, record, AuditOutcome.SUCCESS, "WAL backup triggered");
-        schedule(() -> executeWalBackup(record.getId(), triggeredBy));
-        return record;
-    }
+
 
     @Override
     public RestoreResult restoreFromBackup(String backupId, String adminEmail) {
@@ -118,31 +109,7 @@ public class BackupServiceImpl implements BackupService {
         return toResult(response);
     }
 
-    @Override
-    public RestoreResult pointInTimeRestore(LocalDateTime targetTime, String adminEmail) {
-        if (targetTime == null) {
-            throw BackupException.badRequest("Target time is required for point-in-time restore");
-        }
-        BackupRecord fullBackup = backupRecordRepository
-                .findTopByTypeAndStatusAndCompletedAtBeforeOrderByCompletedAtDesc(BackupType.FULL, BackupStatus.SUCCESS, targetTime)
-                .orElseThrow(() -> BackupException.notFound("No full backup available before target time"));
-        if (fullBackup.getFilePath() == null || fullBackup.getFilePath().isBlank()) {
-            throw BackupException.badRequest("Full backup file path is missing");
-        }
 
-        String restoreId = UUID.randomUUID().toString();
-        RestoreResponse response = RestoreResponse.builder()
-                .restoreId(restoreId)
-                .status(RestoreStatus.PENDING)
-                .message("Point-in-time restore scheduled")
-                .estimatedDurationMs(null)
-                .build();
-        currentRestore.set(response);
-
-        logRestoreAudit(adminEmail, AuditAction.RESTORE_TRIGGERED, restoreId, fullBackup.getId(), AuditOutcome.SUCCESS, "PITR restore triggered");
-        schedule(() -> executePointInTimeRestore(restoreId, fullBackup, targetTime, adminEmail));
-        return toResult(response);
-    }
 
     @Override
     public Page<BackupRecord> listBackups(Pageable pageable, BackupType type, BackupStatus status) {
@@ -172,8 +139,7 @@ public class BackupServiceImpl implements BackupService {
         CronExpression cronExpression = CronExpression.parse(backupProperties.full().cron());
         ZonedDateTime nextRun = cronExpression.next(ZonedDateTime.now());
 
-        String retentionPolicy = "Full: " + backupProperties.retention().fullWeeks() + " weeks, WAL: "
-                + backupProperties.retention().walDays() + " days";
+        String retentionPolicy = "Full: " + backupProperties.retention().fullWeeks() + " weeks";
 
         return BackupStatusResponse.builder()
                 .lastFullBackup(lastFullBackup.map(this::toResponse).orElse(null))
@@ -202,10 +168,7 @@ public class BackupServiceImpl implements BackupService {
                 .and(LogField.OPERATION, "backup-retention")
                 .build()) {
             LocalDateTime fullCutoff = LocalDateTime.now().minusWeeks(backupProperties.retention().fullWeeks());
-            LocalDateTime walCutoff = LocalDateTime.now().minusDays(backupProperties.retention().walDays());
-
             expireBackups(BackupType.FULL, fullCutoff);
-            expireBackups(BackupType.WAL, walCutoff);
         }
     }
 
@@ -222,13 +185,9 @@ public class BackupServiceImpl implements BackupService {
         executeBackup(backupId, triggeredBy, BackupType.FULL);
     }
 
-    private void executeWalBackup(String backupId, String triggeredBy) {
-        executeBackup(backupId, triggeredBy, BackupType.WAL);
-    }
-
     private void executeBackup(String backupId, String triggeredBy, BackupType type) {
         String traceId = UUID.randomUUID().toString();
-        String operation = type == BackupType.FULL ? "full-backup" : "wal-backup";
+        String operation = "full-backup";
 
         try (var ctx = LogContext.of(LogField.TRACE_ID, traceId)
                 .and(LogField.ACTOR, triggeredBy)
@@ -242,9 +201,7 @@ public class BackupServiceImpl implements BackupService {
             LocalDateTime started = LocalDateTime.now();
             String fileName = buildFileName(type, started);
 
-            BackupExecutionResult result = type == BackupType.FULL
-                    ? fullBackupExecutor.execute(fileName, buildPgDumpCommand(), null)
-                    : walBackupExecutor.execute(fileName, buildWalCommand(), null);
+            BackupExecutionResult result = fullBackupExecutor.execute(fileName, buildPgDumpCommand(), null);
 
             record.setStatus(BackupStatus.SUCCESS);
             record.setFileName(result.fileName());
@@ -268,7 +225,7 @@ public class BackupServiceImpl implements BackupService {
     private void markBackupFailed(String traceId, String backupId, String triggeredBy, BackupType type, Exception ex) {
         try (var ctx = LogContext.of(LogField.TRACE_ID, traceId)
                 .and(LogField.ACTOR, triggeredBy)
-                .and(LogField.OPERATION, type == BackupType.FULL ? "full-backup" : "wal-backup")
+                .and(LogField.OPERATION, "full-backup")
                 .build()) {
             BackupRecord record = getBackup(backupId);
             record.setStatus(BackupStatus.FAILED);
@@ -312,52 +269,7 @@ public class BackupServiceImpl implements BackupService {
         }
     }
 
-    private void executePointInTimeRestore(String restoreId, BackupRecord fullBackup, LocalDateTime targetTime, String adminEmail) {
-        String traceId = UUID.randomUUID().toString();
 
-        try (var ctx = LogContext.of(LogField.TRACE_ID, traceId)
-                .and(LogField.ACTOR, adminEmail)
-                .and(LogField.OPERATION, "pitr-restore")
-                .build()) {
-
-            updateRestoreStatus(restoreId, RestoreStatus.RUNNING, "Validating checksum");
-
-                List<Path> walFiles = backupRecordRepository
-                    .findAllByTypeAndStatusAndCreatedAtBeforeOrderByCreatedAtAsc(BackupType.WAL, BackupStatus.SUCCESS, targetTime)
-                    .stream()
-                    .map(BackupRecord::getFilePath)
-                    .filter(path -> path != null && !path.isBlank())
-                    .map(Path::of)
-                    .collect(Collectors.toList());
-
-                RestoreCommand fullRestore = new FullRestoreCommand(
-                    restoreId,
-                    fullBackup,
-                    Path.of(fullBackup.getFilePath()),
-                    storageProvider,
-                    processExecutor,
-                    buildRestoreCommand());
-
-            RestoreCommand command = new PointInTimeRestoreCommand(
-                    restoreId,
-                    fullRestore,
-                    storageProvider,
-                    processExecutor,
-                    walFiles,
-                    targetTime,
-                    buildRestoreCommand());
-
-            updateRestoreStatus(restoreId, RestoreStatus.RUNNING, "Stopping writes");
-            updateRestoreStatus(restoreId, RestoreStatus.RUNNING, "Replaying WAL files");
-            command.execute();
-            updateRestoreStatus(restoreId, RestoreStatus.RUNNING, "Restarting services");
-            updateRestoreStatus(restoreId, RestoreStatus.SUCCESS, "Point-in-time restore completed");
-            logRestoreAudit(adminEmail, AuditAction.RESTORE_COMPLETED, restoreId, fullBackup.getId(), AuditOutcome.SUCCESS, "PITR restore completed");
-            eventPublisher.publish(new RestoreCompletedEvent(restoreId, adminEmail));
-        } catch (Exception ex) {
-            handleRestoreFailure(traceId, restoreId, fullBackup, adminEmail, ex, "pitr-restore");
-        }
-    }
 
     private void expireBackups(BackupType type, LocalDateTime cutoff) {
         List<BackupRecord> expired = backupRecordRepository
@@ -450,7 +362,7 @@ public class BackupServiceImpl implements BackupService {
     }
 
     private String buildFileName(BackupType type, LocalDateTime timestamp) {
-        String suffix = type == BackupType.FULL ? "full.sql.gz" : "wal.tar.gz";
+        String suffix = "full.sql.gz";
         return FILE_STAMP.format(timestamp) + "_" + suffix;
     }
 
@@ -484,29 +396,7 @@ public class BackupServiceImpl implements BackupService {
         return command;
     }
 
-    private List<String> buildWalCommand() {
-        String username = sanitizeIdentifier(dataSourceProperties.getUsername(), "DB_USER");
-        String password = dataSourceProperties.getPassword();
 
-        List<String> command = new ArrayList<>();
-        command.add("docker");
-        command.add("exec");
-        command.add("-i");
-        if (password != null && !password.isBlank()) {
-            command.add("-e");
-            command.add("PGPASSWORD=" + password);
-        }
-        command.add(DB_CONTAINER);
-        command.add("pg_basebackup");
-        command.add("-U");
-        command.add(username);
-        command.add("-D");
-        command.add("-");
-        command.add("-Ft");
-        command.add("-X");
-        command.add("stream");
-        return command;
-    }
 
     private List<String> buildRestoreCommand() {
         String username = sanitizeIdentifier(dataSourceProperties.getUsername(), "DB_USER");

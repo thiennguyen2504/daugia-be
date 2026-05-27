@@ -79,11 +79,8 @@ backup:
   full:
     cron: "0 0 2 * * SUN"
     path: /backups/full
-  wal:
-    path: /backups/wal
   retention:
     full-weeks: 4
-    wal-days: 14
     check-rate: 86400000
   admin-emails: ${BACKUP_ADMIN_EMAILS:}
   encrypt: false

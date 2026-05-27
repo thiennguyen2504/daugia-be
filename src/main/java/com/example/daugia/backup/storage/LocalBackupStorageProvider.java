@@ -24,9 +24,7 @@ public class LocalBackupStorageProvider implements BackupStorageProvider {
 
     @Override
     public Path resolveBackupPath(BackupType type, String fileName) {
-        String basePath = type == BackupType.WAL
-                ? backupProperties.wal().path()
-                : backupProperties.full().path();
+        String basePath = backupProperties.full().path();
         return Paths.get(basePath).resolve(fileName);
     }
 

@@ -14,11 +14,8 @@ public interface BackupService {
 
     BackupRecord triggerFullBackup(String triggeredBy);
 
-    BackupRecord triggerWalArchive(String triggeredBy);
-
     RestoreResult restoreFromBackup(String backupId, String adminEmail);
 
-    RestoreResult pointInTimeRestore(LocalDateTime targetTime, String adminEmail);
 
     Page<BackupRecord> listBackups(Pageable pageable, BackupType type, BackupStatus status);
 

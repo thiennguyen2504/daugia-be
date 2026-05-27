@@ -68,14 +68,6 @@ public class BackupController {
         return ResponseEntity.accepted().body(ApiResponse.success("Restore scheduled", toResponse(result)));
     }
 
-    @PostMapping("/pitr")
-    @Operation(summary = "Point-in-time restore")
-    public ResponseEntity<ApiResponse<RestoreResponse>> pointInTimeRestore(
-            @RequestBody RestoreRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-        RestoreResult result = backupService.pointInTimeRestore(request.getTargetDateTime(), resolveActor(jwt));
-        return ResponseEntity.accepted().body(ApiResponse.success("Point-in-time restore scheduled", toResponse(result)));
-    }
 
     @GetMapping("/status")
     @Operation(summary = "Get backup status")
