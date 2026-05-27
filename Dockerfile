@@ -12,15 +12,12 @@ RUN ./mvnw -B clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN apk add --no-cache tzdata
+RUN apk add --no-cache tzdata docker-cli
 ENV TZ=Asia/Ho_Chi_Minh
 
-RUN addgroup -S spring && adduser -S spring -G spring \
-    && mkdir -p /app/logs \
-    && chown -R spring:spring /app
-USER spring:spring
+RUN mkdir -p /app/logs /backups
 
-COPY --from=build --chown=spring:spring /app/target/*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

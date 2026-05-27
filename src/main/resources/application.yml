@@ -73,6 +73,21 @@ auction:
     window-seconds: 60
     extension-seconds: 120
 
+backup:
+  enabled: false
+  storage: local
+  full:
+    cron: "0 0 2 * * SUN"
+    path: /backups/full
+  wal:
+    path: /backups/wal
+  retention:
+    full-weeks: 4
+    wal-days: 14
+    check-rate: 86400000
+  admin-emails: ${BACKUP_ADMIN_EMAILS:}
+  encrypt: false
+
 vnpay:
   tmn-code: ${VNPAY_TMN_CODE:TESTCODE}
   hash-secret: ${VNPAY_HASH_SECRET:testsecret}
@@ -106,4 +121,7 @@ auction:
   redis:
     pubsub:
       enabled: true
+
+backup:
+  enabled: true
 

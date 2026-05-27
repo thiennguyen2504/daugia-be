@@ -1,5 +1,6 @@
 package com.example.daugia.common.exception;
 
+import com.example.daugia.backup.exception.BackupException;
 import com.example.daugia.common.dto.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -84,7 +85,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({AppException.class, ResourceNotFoundException.class,
             DuplicateResourceException.class, InvalidTokenException.class,
-            EmailSendingException.class, TokenException.class})
+            EmailSendingException.class, TokenException.class, BackupException.class})
     public ResponseEntity<ApiResponse<ErrorResponse>> handleAppException(
             AppException ex,
             WebRequest request) {

@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - backup_data:/backups
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
@@ -53,11 +54,15 @@ services:
     ports:
       - "8081:8080"
     restart: unless-stopped
+    volumes:
+      - backup_data:/backups
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - daugia-net
 
 volumes:
   pg_data:
+  backup_data:
 
 networks:
   daugia-net:

@@ -1,6 +1,7 @@
 package com.example.daugia;
 
 import com.example.daugia.auction.config.AuctionProperties;
+import com.example.daugia.backup.properties.BackupProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,7 +13,7 @@ import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 @EnableJpaAuditing
 @EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "PT55S")
-@EnableConfigurationProperties(AuctionProperties.class)
+@EnableConfigurationProperties({AuctionProperties.class, BackupProperties.class})
 public class BiddingApplication {
 
 	public static void main(String[] args) {

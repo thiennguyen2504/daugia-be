@@ -91,6 +91,31 @@
     </appender>
 
     <!-- ====================================================== -->
+    <!-- BACKUP_FILE — rolling by date+size, 90 days            -->
+    <!-- ====================================================== -->
+    <appender name="BACKUP_FILE_RAW" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/backup.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/backup.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>9GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>actor</includeMdcKeyName>
+            <includeMdcKeyName>operation</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <appender name="BACKUP_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <appender-ref ref="BACKUP_FILE_RAW" />
+    </appender>
+
+    <!-- ====================================================== -->
     <!-- SECURITY_FILE — rolling by date+size, 90 days           -->
     <!-- ====================================================== -->
     <appender name="SECURITY_FILE_RAW" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -122,6 +147,11 @@
     <!-- Audit logger → AUDIT_FILE only (additivity=false prevents double-logging) -->
     <logger name="com.example.daugia.common.audit" level="INFO" additivity="false">
         <appender-ref ref="AUDIT_FILE" />
+    </logger>
+
+    <!-- Backup logger → BACKUP_FILE only -->
+    <logger name="com.example.daugia.backup" level="INFO" additivity="false">
+        <appender-ref ref="BACKUP_FILE" />
     </logger>
 
     <!-- Auth filter (e.g. RateLimitFilter, JwtAuthFilter) → SECURITY_FILE + CONSOLE, WARN+ only -->

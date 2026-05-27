@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -194,6 +195,22 @@ public class EmailServiceImpl implements EmailService {
                 + "<div style='padding:16px;background:#f8f8f8;border-radius:12px'>" + message + "</div>"
                 + "</div>";
         sendNotificationEmail(adminEmail, subject, body);
+    }
+
+    @Async
+    @Override
+    public void sendBackupFailureAlert(List<String> adminEmails, String backupType, String errorMessage) {
+        if (adminEmails == null || adminEmails.isEmpty()) {
+            return;
+        }
+        String subject = "SmartAuction - Backup Failed";
+        String body = "<div style='font-family:Arial,sans-serif;line-height:1.6'>"
+                + "<h2 style='color:#e74c3c'>❌ Backup Failed</h2>"
+                + "<p><strong>Type:</strong> " + backupType + "</p>"
+                + "<p><strong>Error:</strong> " + errorMessage + "</p>"
+                + "<p>Please check the backup logs and take action.</p>"
+                + "</div>";
+        adminEmails.forEach(email -> sendNotificationEmail(email, subject, body));
     }
 
     private void sendHtmlEmail(String to, String subject, String content) {

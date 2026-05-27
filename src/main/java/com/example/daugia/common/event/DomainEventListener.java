@@ -1,5 +1,8 @@
 package com.example.daugia.common.event;
 
+import com.example.daugia.backup.event.BackupCompletedEvent;
+import com.example.daugia.backup.event.BackupFailedEvent;
+import com.example.daugia.backup.event.RestoreCompletedEvent;
 import com.example.daugia.auth.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,5 +81,23 @@ public class DomainEventListener {
     public void onPaymentCompleted(PaymentCompletedEvent event) {
         log.info("[EVENT] PaymentCompleted — eventId={}, auction={}, payer={}, amount={}, at={}",
                 event.getEventId(), event.getAuctionId(), event.getPayerEmail(), event.getAmount(), event.getOccurredAt());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onBackupCompleted(BackupCompletedEvent event) {
+        log.info("[EVENT] BackupCompleted — eventId={}, backupId={}, type={}, file={}, at={}",
+                event.getEventId(), event.getBackupId(), event.getBackupType(), event.getFileName(), event.getOccurredAt());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onBackupFailed(BackupFailedEvent event) {
+        log.warn("[EVENT] BackupFailed — eventId={}, backupId={}, type={}, error={}, at={}",
+                event.getEventId(), event.getBackupId(), event.getBackupType(), event.getErrorMessage(), event.getOccurredAt());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onRestoreCompleted(RestoreCompletedEvent event) {
+        log.info("[EVENT] RestoreCompleted — eventId={}, restoreId={}, actor={}, at={}",
+                event.getEventId(), event.getRestoreId(), event.getTriggeredBy(), event.getOccurredAt());
     }
 }

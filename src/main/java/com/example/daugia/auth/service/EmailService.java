@@ -15,4 +15,5 @@ public interface EmailService {
     void sendContactRejectedEmail(String to, String name, String response);
     void sendAdminNewFeedbackNotification(String adminEmail, String senderName, String content);
     void sendAdminNewContactNotification(String adminEmail, String senderName, String message);
+    void sendBackupFailureAlert(java.util.List<String> adminEmails, String backupType, String errorMessage);
 }
