@@ -9,4 +9,10 @@ public interface EmailService {
     void sendAuctionRejectedEmail(String to, String sellerName, String productName, String reason);
     void sendAuctionWinnerEmail(String to, String winnerName, String productName);
     void sendAuctionSoldEmail(String to, String sellerName, String productName);
+    void sendFeedbackResolvedEmail(String to, String name, String response);
+    void sendFeedbackRejectedEmail(String to, String name, String response);
+    void sendContactResolvedEmail(String to, String name, String response);
+    void sendContactRejectedEmail(String to, String name, String response);
+    void sendAdminNewFeedbackNotification(String adminEmail, String senderName, String content);
+    void sendAdminNewContactNotification(String adminEmail, String senderName, String message);
 }
